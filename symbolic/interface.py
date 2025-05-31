@@ -7,8 +7,8 @@
 
 # Libraries
 import inspect, re, time
-from symbolic.helper.io import safe_mkdir
-from symbolic.reggression.controller import Controller
+from symbolic.helper.io import safe_mkdir, get_file_path_exists
+from symbolic.regression.controller import Controller
 
 # Interface Class
 class Interface:
@@ -96,24 +96,57 @@ class Interface:
         * `input_fields`:  List of fields to use as inputs
         * `output_fields`: List of fields to use as outputs
         """
-        self.__print__(f"Defining the reggression problem")
+        self.__print__(f"Defining the regression problem")
+        
+        # Check inputs
         if len(input_fields) == 0:
             raise ValueError("No inputs have been defined!")
         if len(output_fields) == 0:
             raise ValueError("No outputs have been defined!")
-        self.__controller__ = Controller(input_fields, output_fields)
+        
+        # Print summary of inputs
         self.__print__("", False)
         self.__print__(f"Inputs:  {input_fields}", False)
         self.__print__(f"Outputs: {output_fields}", False)
         self.__print__("", False)
 
-    def add_data(self, csv_path:str) -> None:
+        # Define controller
+        self.__controller__ = Controller(self.__output_path__, input_fields, output_fields)
+
+    def add_data(self, csv_path:str, training:bool=True) -> None:
         """
         Adds fitting data
 
         Parameters:
         * `csv_path`: Path to the csv file containing the data
+        * `training`: Whether the data will be used for fitting
         """
         csv_path = self.__get_input__(csv_path)
         self.__print__(f"Reading data from '{csv_path}'")
-        self.__controller__.add_csv_data(csv_path)
+        self.__controller__.add_csv_data(csv_path, training)
+
+    def fit_model(self, model_name:str, **settings) -> None:
+        """
+        Performs the fitting
+
+        Parameters:
+        * `model_name`: Name of the model
+        """
+        num_data = self.__controller__.get_num_data()
+        self.__print__(f"Fitting the model against {num_data} sets of data")
+        self.__controller__.fit_model(model_name, **settings)
+
+    def plot_fit(self, x_field:str, y_field:str, x_units:str="",
+                 y_units:str="", x_limits:tuple=None, y_limits:tuple=None) -> None:
+        """
+        Plots the fitting results
+
+        Parameters:
+        * `x_field`:  Field to use for the x-axis
+        * `y_field`:  Field to use for the y-axis
+        * `x_limits`: Limits to apply on the x-axis
+        * `y_limits`: Limits to apply on the y-axis
+        """
+        self.__print__(f"Plotting the fit for the {y_field}-{x_field} curve")
+        plot_path = get_file_path_exists(self.__get_output__("plot"), "png")
+        self.__controller__.plot_fit(plot_path, x_field, y_field, x_units, y_units, x_limits, y_limits)

@@ -27,5 +27,9 @@ model = PySRRegressor(
     elementwise_loss="loss(prediction, target) = (prediction - target)^2",
 )
 
+print(type(X))
+print(X.shape)
+print(y.shape)
+
 model.fit(X, y)
 print(model)

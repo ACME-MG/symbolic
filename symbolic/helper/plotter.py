@@ -1,0 +1,99 @@
+"""
+ Title:         Plotter
+ Description:   Plotting functions
+ Author:        Janzen Choi
+ 
+"""
+
+# Libraries
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolours
+
+# Constants
+EXP_COLOUR   = "darkgray"
+CAL_COLOUR   = "tab:green"
+VAL_COLOUR   = "tab:red"
+
+def prep_plot(x_label:str, y_label:str, x_units:str="", y_units:str="", title:str="", size:int=14) -> None:
+    """
+    Prepares the plot
+    
+    Parameters:
+    * `x_label`: Label for the x-axis
+    * `y_label`: Label for the y-axis
+    * `x_units`: Units for the x-axis
+    * `y_units`: Units for the y-axis
+    * `title`:   The title of the plot
+    * `size`:    The size of the font
+    """
+
+    # Set figure size and title
+    plt.figure(figsize=(5,5), dpi=200)
+    plt.title(title, fontsize=size+3, fontweight="bold", y=1.05)
+    plt.gca().set_position([0.17, 0.12, 0.75, 0.75])
+    plt.gca().grid(which="major", axis="both", color="SlateGray", linewidth=1, linestyle=":", alpha=0.5)
+
+    # Set x and y labels
+    x_unit_str = f" ({x_units})" if x_units != "" else ""
+    y_unit_str = f" ({y_units})" if y_units != "" else ""
+    plt.xlabel(f"{x_label.replace('_', ' ').capitalize()}{x_unit_str}", fontsize=size)
+    plt.ylabel(f"{y_label.replace('_', ' ').capitalize()}{y_unit_str}", fontsize=size)
+    
+    # Format and save
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    for spine in plt.gca().spines.values():
+        spine.set_linewidth(1)
+
+def set_limits(x_limits:tuple=None, y_limits:tuple=None) -> None:
+    """
+    Sets the limits of the x and y scales
+
+    Parameters:
+    * `x_limits`: The upper and lower bounds of the plot for the x scale
+    * `y_limits`: The upper and lower bounds bound of the plot for the y scale
+    """
+    if x_limits != None:
+        plt.xlim(*x_limits)
+    if y_limits != None:
+        plt.ylim(*y_limits)
+
+def add_legend() -> None:
+    """
+    Adds a basic legend
+    """
+    handles = [
+        plt.scatter([], [], color=EXP_COLOUR, label="Experiment",  s=8**2),
+        plt.plot([], [],    color=CAL_COLOUR, label="Calibration", linewidth=3)[0],
+        plt.plot([], [],    color=VAL_COLOUR, label="Validation",  linewidth=3)[0]
+    ]
+    legend = plt.legend(handles=handles, ncol=1, framealpha=1, edgecolor="black",
+                        fancybox=True, facecolor="white", fontsize=12, loc="upper left")
+    plt.gca().add_artist(legend)
+
+def save_plot(file_path:str, settings:dict={}) -> None:
+    """
+    Saves the plot and clears the figure
+
+    Parameters:
+    * `file_path`: The path to save the plot
+    * `settings`:  Settings for the `savefig` function
+    """
+    plt.savefig(file_path, **settings)
+    plt.cla()
+    plt.clf()
+    plt.close()
+
+def lighten_colour(colour:str, factor:float=0.5):
+    """
+    Lighten a color by mixing it with white
+    
+    Parameters:
+    * `colour`:  A Matplotlib colour (e.g., 'blue', '#FF0000', (1, 0, 0)).
+    * `factor`: A number between 0 and 1. Higher values make it lighter.
+    
+    Returns the lightened colour
+    """
+    rgb = mcolours.to_rgb(colour)
+    white = (1, 1, 1)
+    return tuple(factor * w + (1 - factor) * c for c, w in zip(rgb, white))
