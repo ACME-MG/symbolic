@@ -18,19 +18,19 @@ class Model(__Model__):
         """
         self.regressor = PySRRegressor(
             maxsize              = 20,
-            niterations          = 100,
+            niterations          = 500,
             binary_operators     = ["+", "*"],
             unary_operators      = ["cos", "exp", "sin", "inv(x) = 1/x"],
             extra_sympy_mappings = {"inv": lambda x: 1 / x},
             elementwise_loss     = "loss(prediction, target) = (prediction - target)^2",
             output_directory     = self.output_path,
         )
-        self.set_input_fields(["strain"], ["strain_rate"], ["temperature"])
+        self.set_input_fields(["strain", "strain_rate", "temperature"])
         self.set_output_fields(["stress"])
 
     def fit(self, data_list:list) -> None:
         """
-        Performs the fittingg
+        Performs the fitting
 
         Parameters:
         * `data_list`: List of dictionaries containing data
@@ -62,4 +62,6 @@ class Model(__Model__):
         """
         Returns the LaTeX equation of the final fit; must be overridden
         """
-        return [self.regressor.latex()]
+        latex_string = self.regressor.latex()
+        latex_string = self.replace_variables(latex_string, [r'\epsilon', r'\dot{\varepsilon}', r'T'])
+        return [latex_string]

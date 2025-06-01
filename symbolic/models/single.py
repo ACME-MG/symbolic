@@ -17,8 +17,8 @@ class Model(__Model__):
         Initialises the model
         """
         self.regressor = PySRRegressor(
-            maxsize              = 20,
-            niterations          = 100,
+            maxsize              = 10,
+            niterations          = 20,
             binary_operators     = ["+", "*"],
             unary_operators      = ["cos", "exp", "sin", "inv(x) = 1/x"],
             extra_sympy_mappings = {"inv": lambda x: 1 / x},
@@ -30,7 +30,7 @@ class Model(__Model__):
 
     def fit(self, data_list:list) -> None:
         """
-        Performs the fittingg
+        Performs the fitting
 
         Parameters:
         * `data_list`: List of dictionaries containing data
@@ -62,4 +62,6 @@ class Model(__Model__):
         """
         Returns the LaTeX equation of the final fit; must be overridden
         """
-        return [self.regressor.latex()]
+        latex_string = self.regressor.latex()
+        latex_string = self.replace_variables(latex_string, [r'\epsilon'])
+        return [latex_string]

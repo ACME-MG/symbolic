@@ -6,7 +6,7 @@
 """
 
 # Libraries
-import importlib, os, pathlib, sys, numpy as np
+import importlib, os, pathlib, re, sys, numpy as np
 from symbolic.helper.general import transpose
 
 # Model Class
@@ -81,7 +81,7 @@ class __Model__:
             # Get data
             data_dict = data.get_data_dict()
             fields = self.input_fields + self.output_fields
-            max_length = max([len(data_dict[field]) for field in fields])
+            max_length = max([len(data_dict[field]) for field in fields if isinstance(data_dict[field], list)])
 
             # Add inputs
             input_list = [data_dict[field] if isinstance(data_dict[field], list) else [data_dict[field]]*max_length for field in self.input_fields]
@@ -127,7 +127,24 @@ class __Model__:
         Returns the LaTeX equation of the final fit; must be overridden
         """
         raise NotImplementedError(f"The 'get_latex' function has not been implemented for the '{self.name}' model!")
-        
+
+    def replace_variables(self, latex_string:str, new_variables:list) -> str:
+        """
+        Replaces variable names inside a latex string
+
+        Parameters:
+        * `latex_string`:  The latex string
+        * `new_variables`: List of new variables in regex
+
+        Returns the replaced latex string
+        """
+        def replacer(match):
+            index = int(match.group(1))
+            if 0 <= index < len(new_variables):
+                return new_variables[index]
+            return match.group(0)
+        return re.sub(r'x_\{(\d+)\}', replacer, latex_string)
+
 def get_model(model_path:str, output_path:str, **kwargs) -> str:
     """
     Gets the model file's content

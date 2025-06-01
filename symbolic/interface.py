@@ -176,8 +176,24 @@ class Interface:
         * `y_limits`: Limits to apply on the y-axis
         """
         self.__print__(f"Plotting the fit for the {y_field}-{x_field} curve")
-        plot_path = get_file_path_exists(self.__get_output__("plot"), "png")
+        plot_path = get_file_path_exists(self.__get_output__("plot_fit"), "png")
         self.__controller__.plot_fit(plot_path, x_field, y_field, x_units, y_units, x_limits, y_limits)
+
+    def plot_1to1(self, handle, label:str="", units:str="", limits:tuple=None) -> None:
+        """
+        Plots 1:1 comparison plots based on a function handle;
+        the function must take a dictionary as an argument and
+        return a list of values
+
+        Parameters:
+        * `handle`: The function handle
+        * `label`:  Label to represent values
+        * `units`:  Units to place beside label
+        * `limits`: Limits of the plot
+        """
+        self.__print__("Plotting a 1:1 comparison")
+        plot_path = get_file_path_exists(self.__get_output__("plot_1to1"), "png")
+        self.__controller__.plot_1to1(plot_path, handle, label, units, limits)
 
     def plot_equation(self) -> None:
         """

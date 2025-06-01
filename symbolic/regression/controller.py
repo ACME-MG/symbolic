@@ -8,8 +8,8 @@
 # Libraries
 import matplotlib.pyplot as plt
 from symbolic.reader.dataset import Dataset
-from symbolic.helper.general import get_thinned_list
-from symbolic.helper.plotter import prep_plot, set_limits, add_legend, save_plot, save_latex
+from symbolic.helper.general import get_thinned_list, flatten
+from symbolic.helper.plotter import prep_plot, set_limits, add_legend, save_plot, save_latex, plot_1to1
 from symbolic.helper.plotter import EXP_COLOUR, CAL_COLOUR, VAL_COLOUR
 from symbolic.models.__model__ import get_model
 
@@ -125,7 +125,41 @@ class Controller:
             validation  = len(prd_data_list) > 0,
         )
         save_plot(plot_path, **settings)
-    
+
+    def plot_1to1(self, plot_path:str, handle, label:str="", units:str="", limits:tuple=None) -> None:
+        """
+        Plots 1:1 comparison plots based on a function handle;
+        the function must take a dictionary as an argument and
+        return a list of values
+
+        Parameters:
+        * `plot_path`: Path to save the plot
+        * `handle`:    The function handle
+        * `label`:     Label to represent values
+        * `units`:     Units to place beside label
+        * `limits`:    Limits of the plot
+        """
+
+        # Check if model has been defined
+        if self.model == None:
+            raise ValueError("The model has not been defined!")
+        
+        # Get all data
+        fit_data_list = self.get_fit_data_list()
+        fit_dict_list = self.model.predict(fit_data_list)
+        prd_data_list = self.get_prd_data_list()
+        prd_dict_list = self.model.predict(prd_data_list)
+
+        # Apply function handle
+        exp_cal_list = flatten([handle(fd.get_data_dict()) for fd in fit_data_list])
+        exp_val_list = flatten([handle(pd.get_data_dict()) for pd in prd_data_list])
+        sim_cal_list = flatten([handle(fd) for fd in fit_dict_list])
+        sim_val_list = flatten([handle(pd) for pd in prd_dict_list])
+
+        # Plot and save
+        plot_1to1(exp_cal_list, exp_val_list, sim_cal_list, sim_val_list, label, units, limits)
+        save_plot(plot_path)
+
     def plot_equation(self, equation_path:str) -> None:
         """
         Saves an image of the equation

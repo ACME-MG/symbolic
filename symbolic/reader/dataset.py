@@ -18,7 +18,7 @@ class Dataset:
         Parameters:
         * `csv_path`: Path to the CSV file
         * `fields`:   Fields to be included in the dataset
-        * `fitting`:  Whether the dataset is for fittingg
+        * `fitting`:  Whether the dataset is for fitting
         """
         
         # Initialise arguments
@@ -28,7 +28,7 @@ class Dataset:
 
         # Read the data
         csv_dict = csv_to_dict(csv_path)
-        max_length = max([len(csv_dict[field]) for field in self.fields])
+        max_length = max([len(csv_dict[field]) for field in self.fields if isinstance(csv_dict[field], list)])
         self.data_dict = {}
 
         # Check and save the data

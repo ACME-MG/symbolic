@@ -16,11 +16,15 @@ def main():
 
     # Initialise
     itf = Interface()
-    itf.define_model("basic")
+    # itf.define_model("single")
+    itf.define_model("tensile")
 
-    # Add training data
-    itf.add_data("tensile/inl/AirBase_20_D5.csv")
-    itf.sparsen_data(100)
+    # Add fitting data
+    # itf.add_data("tensile/inl/AirBase_20_D5.csv")
+    # itf.sparsen_data(100)
+    for file in ["AirBase_800_D7", "AirBase_850_D9", "AirBase_900_D10", "AirBase_950_D11", "AirBase_1000_D12"]:
+        itf.add_data(f"tensile/inl/{file}.csv", fitting=True)
+        itf.sparsen_data(100)
 
     # Fit the data
     itf.fit_model()
@@ -33,6 +37,10 @@ def main():
         y_units = "MPa",
     )
     itf.plot_equation()
+
+    # Analyse results
+    stresses = lambda data_dict : [max(data_dict["stress"])*(i+1)/10 for i in range(10)]
+    itf.plot_1to1(stresses, r"$\sigma$", "MPa")
 
 # Calls the main function
 if __name__ == "__main__":
