@@ -16,33 +16,23 @@ def main():
 
     # Initialise
     itf = Interface()
-    itf.define_problem(
-        input_fields  = ["strain"],
-        output_fields = ["stress"]
-    )
-    
+    itf.define_model("basic")
+
     # Add training data
-    csv_path = "tensile/inl/AirBase_20_D5.csv"
-    itf.add_data(csv_path)
+    itf.add_data("tensile/inl/AirBase_20_D5.csv")
+    itf.sparsen_data(100)
 
     # Fit the data
-    itf.fit_model(
-        model_name           = "basic",
-        maxsize              = 20,
-        niterations          = 40,
-        binary_operators     = ["+", "*"],
-        unary_operators      = ["cos", "exp", "sin", "inv(x) = 1/x"],
-        extra_sympy_mappings = {"inv": lambda x: 1 / x},
-        elementwise_loss     = "loss(prediction, target) = (prediction - target)^2",
-    )
+    itf.fit_model()
 
-    # Plots the results
+    # Save the results
     itf.plot_fit(
         x_field = "strain",
         y_field = "stress",
         x_units = "mm/mm",
         y_units = "MPa",
     )
+    itf.plot_equation()
 
 # Calls the main function
 if __name__ == "__main__":

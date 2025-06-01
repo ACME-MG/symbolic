@@ -30,7 +30,7 @@ class Interface:
         self.__print_index__ = 0
         self.__verbose__     = verbose
         self.__controller__  = None
-        
+
         # Starting code
         time_str = time.strftime("%A, %D, %H:%M:%S", time.localtime())
         self.__print__(f"\n  Starting on {time_str}\n", add_index=False)
@@ -50,26 +50,36 @@ class Interface:
         self.__get_input__  = lambda x : f"{self.__input_path__}/{x}"
         self.__get_output__ = lambda x : f"{self.__output_path__}/{x}"
         
+        # Initialise controller
+        self.__controller__ = Controller(self.__output_path__)
+        
         # Create directories
         if not output_here:
             safe_mkdir(output_path)
             safe_mkdir(self.__output_path__)
 
-    def __print__(self, message:str, add_index:bool=True) -> None:
+    def __print__(self, message:str, add_index:bool=True, sub_index:bool=False) -> None:
         """
         Displays a message before running the command (for internal use only)
         
         Parameters:
         * `message`:   the message to be displayed
         * `add_index`: if true, adds a number at the start of the message
+        * `sub_index`: if true, adds a number as a decimal
         """
         if not add_index:
             print(f"\t  {message}")
         if not self.__verbose__ or not add_index:
             return
-        self.__print_index__ += 1
-        print(f"   {self.__print_index__})\t{message} ...")
-    
+        if sub_index:
+            self.__print_subindex__ += 1
+            print_index = f"     {self.__print_index__}.{self.__print_subindex__}"
+        else:
+            self.__print_index__ += 1
+            self.__print_subindex__ = 0
+            print_index = f"{self.__print_index__}"
+        print(f"   {print_index})\t{message} ...")
+
     def __del__(self):
         """
         Prints out the final message (for internal use only)
@@ -88,44 +98,61 @@ class Interface:
         duration_str = f"in {duration_str}" if duration_str != "" else "in less than 1 second"
         self.__print__(f"\n  Finished on {time_str} {duration_str}\n", add_index=False)
 
-    def define_problem(self, input_fields:list, output_fields:list):
+    def define_model(self, model_name:str, **kwargs) -> None:
         """
-        Defines the input and output fields
+        Defines the model
 
         Parameters:
-        * `input_fields`:  List of fields to use as inputs
-        * `output_fields`: List of fields to use as outputs
+        * `model_name`: Name of the model
         """
-        self.__print__(f"Defining the regression problem")
-        
-        # Check inputs
-        if len(input_fields) == 0:
-            raise ValueError("No inputs have been defined!")
-        if len(output_fields) == 0:
-            raise ValueError("No outputs have been defined!")
-        
-        # Print summary of inputs
-        self.__print__("", False)
-        self.__print__(f"Inputs:  {input_fields}", False)
-        self.__print__(f"Outputs: {output_fields}", False)
-        self.__print__("", False)
+        self.__print__(f"Initialising the '{model_name}' model")
+        self.__controller__.define_model(model_name, **kwargs)
 
-        # Define controller
-        self.__controller__ = Controller(self.__output_path__, input_fields, output_fields)
-
-    def add_data(self, csv_path:str, training:bool=True) -> None:
+    def add_data(self, csv_path:str, fitting:bool=True) -> None:
         """
         Adds fitting data
 
         Parameters:
         * `csv_path`: Path to the csv file containing the data
-        * `training`: Whether the data will be used for fitting
+        * `fitting`:  Whether the data will be used for fitting
         """
         csv_path = self.__get_input__(csv_path)
         self.__print__(f"Reading data from '{csv_path}'")
-        self.__controller__.add_csv_data(csv_path, training)
+        self.__controller__.add_data(csv_path, fitting)
 
-    def fit_model(self, model_name:str, **settings) -> None:
+    def get_data_dict(self) -> dict:
+        """
+        Retrieves last added data
+        """
+        self.__print__("Retrieving data", sub_index=True)
+        return self.__controller__.get_last_data().get_data_dict()
+
+    def get_data(self, field:str) -> list:
+        """
+        Retrieves last added data under a field
+
+        Parameters:
+        * `field`: The field from which data is retrieved
+        
+        Returns the list of data
+        """
+        self.__print__(f"Retrieving data under '{field}'", sub_index=True)
+        data_dict = self.__controller__.get_last_data().get_data_dict()
+        if not field in data_dict.keys():
+            raise ValueError(f"The '{field}' field does not exist!")
+        return data_dict[field]
+
+    def sparsen_data(self, new_size:int=100) -> None:
+        """
+        Sparsen the most recently added dataset
+
+        Parameters:
+        * `new_size`: New size to sparsen the data
+        """
+        self.__print__(f"Sparsening data to {new_size} points", sub_index=True)
+        self.__controller__.sparsen_data(new_size)
+
+    def fit_model(self) -> None:
         """
         Performs the fitting
 
@@ -133,8 +160,9 @@ class Interface:
         * `model_name`: Name of the model
         """
         num_data = self.__controller__.get_num_data()
-        self.__print__(f"Fitting the model against {num_data} sets of data")
-        self.__controller__.fit_model(model_name, **settings)
+        num_fit_data = self.__controller__.get_num_fit_data()
+        self.__print__(f"Fitting the model against {num_fit_data}/{num_data} datasets")
+        self.__controller__.fit_model()
 
     def plot_fit(self, x_field:str, y_field:str, x_units:str="",
                  y_units:str="", x_limits:tuple=None, y_limits:tuple=None) -> None:
@@ -150,3 +178,11 @@ class Interface:
         self.__print__(f"Plotting the fit for the {y_field}-{x_field} curve")
         plot_path = get_file_path_exists(self.__get_output__("plot"), "png")
         self.__controller__.plot_fit(plot_path, x_field, y_field, x_units, y_units, x_limits, y_limits)
+
+    def plot_equation(self) -> None:
+        """
+        Saves an image of the equation
+        """
+        self.__print__(f"Plotting the equation for the best fit")
+        equation_path = get_file_path_exists(self.__get_output__("equation"), "png")
+        self.__controller__.plot_equation(equation_path)

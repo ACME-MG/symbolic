@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolours
 
 # Constants
-EXP_COLOUR   = "darkgray"
-CAL_COLOUR   = "tab:green"
-VAL_COLOUR   = "tab:red"
+EXP_COLOUR = "silver"
+CAL_COLOUR = "tab:green"
+VAL_COLOUR = "tab:red"
 
 def prep_plot(x_label:str, y_label:str, x_units:str="", y_units:str="", title:str="", size:int=14) -> None:
     """
@@ -58,15 +58,19 @@ def set_limits(x_limits:tuple=None, y_limits:tuple=None) -> None:
     if y_limits != None:
         plt.ylim(*y_limits)
 
-def add_legend() -> None:
+def add_legend(calibration:bool=True, validation:bool=True) -> None:
     """
     Adds a basic legend
+
+    Parameters:
+    * `calibration`: Whether to add calibration to the legend
+    * `validation`:  Whether to add validation to the legend
     """
-    handles = [
-        plt.scatter([], [], color=EXP_COLOUR, label="Experiment",  s=8**2),
-        plt.plot([], [],    color=CAL_COLOUR, label="Calibration", linewidth=3)[0],
-        plt.plot([], [],    color=VAL_COLOUR, label="Validation",  linewidth=3)[0]
-    ]
+    handles = [plt.scatter([], [], color=EXP_COLOUR, label="Experiment",  s=8**2)]
+    if calibration:
+        handles += [plt.plot([], [], color=CAL_COLOUR, label="Calibration", linewidth=3)[0]]
+    if validation:
+        handles += [plt.plot([], [], color=VAL_COLOUR, label="Validation", linewidth=3)[0]]
     legend = plt.legend(handles=handles, ncol=1, framealpha=1, edgecolor="black",
                         fancybox=True, facecolor="white", fontsize=12, loc="upper left")
     plt.gca().add_artist(legend)
@@ -83,6 +87,20 @@ def save_plot(file_path:str, settings:dict={}) -> None:
     plt.cla()
     plt.clf()
     plt.close()
+
+def save_latex(file_path:str, latex_equations:list) -> None:
+    """
+    Saves the plot and clears the figure
+
+    Parameters:
+    * `file_path`:      The path to save the plot
+    * `latex_equation`: List of equation in LaTeX
+    """
+    plt.figure(figsize=(8, 0.8 * len(latex_equations)))  # Adjust height based on number of equations
+    for idx, eq in enumerate(latex_equations):
+        plt.text(0.5, 1 - (idx + 1) / (len(latex_equations) + 1), f"${eq}$", fontsize=14, ha="center", va="center")
+    plt.axis("off")
+    save_plot(file_path, {"bbox_inches": "tight"})
 
 def lighten_colour(colour:str, factor:float=0.5):
     """

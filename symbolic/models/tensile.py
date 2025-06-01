@@ -25,7 +25,7 @@ class Model(__Model__):
             elementwise_loss     = "loss(prediction, target) = (prediction - target)^2",
             output_directory     = self.output_path,
         )
-        self.set_input_fields(["strain"])
+        self.set_input_fields(["strain"], ["strain_rate"], ["temperature"])
         self.set_output_fields(["stress"])
 
     def fit(self, data_list:list) -> None:
