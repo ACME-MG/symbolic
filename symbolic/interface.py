@@ -149,8 +149,21 @@ class Interface:
         Parameters:
         * `new_size`: New size to sparsen the data
         """
-        self.__print__(f"Sparsening data to {new_size} points", sub_index=True)
+        old_size = self.__controller__.get_last_data().get_size()
+        self.__print__(f"Sparsening data ({old_size} -> {new_size})", sub_index=True)
         self.__controller__.sparsen_data(new_size)
+
+    def set_weights(self, weights:list) -> None:
+        """
+        Sets weights to the most recently added dataset;
+        uses spline interpolation to weight data points;
+        assumes relatively uniform spreading of values
+
+        Parameters:
+        * `weights`: List of weights
+        """
+        self.__print__(f"Applying weights ({weights})", sub_index=True)
+        self.__controller__.set_weights(weights)
 
     def fit_model(self) -> None:
         """
@@ -161,10 +174,11 @@ class Interface:
         """
         num_data = self.__controller__.get_num_data()
         num_fit_data = self.__controller__.get_num_fit_data()
-        self.__print__(f"Fitting the model against {num_fit_data}/{num_data} datasets")
+        total_size = sum([data.get_size() for data in self.__controller__.get_data_list()])
+        self.__print__(f"Fitting the model against {num_fit_data}/{num_data} datasets ({total_size} points)")
         self.__controller__.fit_model()
 
-    def plot_fit(self, x_field:str, y_field:str, x_units:str="",
+    def plot_fit(self, x_field:str, y_field:str, x_units:str="", x_scale:float=1.0, y_scale:float=1.0, 
                  y_units:str="", x_limits:tuple=None, y_limits:tuple=None) -> None:
         """
         Plots the fitting results
@@ -172,12 +186,14 @@ class Interface:
         Parameters:
         * `x_field`:  Field to use for the x-axis
         * `y_field`:  Field to use for the y-axis
+        * `x_scale`:  Factor to apply to x values
+        * `y_scale`:  Factor to apply to y values
         * `x_limits`: Limits to apply on the x-axis
         * `y_limits`: Limits to apply on the y-axis
         """
         self.__print__(f"Plotting the fit for the {y_field}-{x_field} curve")
         plot_path = get_file_path_exists(self.__get_output__("plot_fit"), "png")
-        self.__controller__.plot_fit(plot_path, x_field, y_field, x_units, y_units, x_limits, y_limits)
+        self.__controller__.plot_fit(plot_path, x_field, y_field, x_scale, y_scale, x_units, y_units, x_limits, y_limits)
 
     def plot_1to1(self, handle, label:str="", units:str="", limits:tuple=None) -> None:
         """

@@ -25,8 +25,8 @@ class Model(__Model__):
             elementwise_loss     = "loss(prediction, target, weight) = weight*(prediction - target)^2",
             output_directory     = self.output_path,
         )
-        self.set_input_fields(["strain", "strain_rate", "temperature"])
-        self.set_output_fields(["stress"])
+        self.set_input_fields(["time", "stress", "temperature", "youngs", "poissons"])
+        self.set_output_fields(["strain"])
 
     def fit(self, data_list:list) -> None:
         """
@@ -53,8 +53,8 @@ class Model(__Model__):
             input_data, _ = self.data_list_to_arrays([data])
             output_data = self.regressor.predict(input_data)
             prd_dict = {
-                "strain": [0] + [d[0] for d in input_data.tolist()],
-                "stress": [0] + output_data.tolist()
+                "time": [0] + [d[0] for d in input_data.tolist()],
+                "strain": [0] + output_data.tolist()
             }
             prd_dict_list.append(prd_dict)
         return prd_dict_list
@@ -64,5 +64,5 @@ class Model(__Model__):
         Returns the LaTeX equation of the final fit; must be overridden
         """
         latex_string = self.regressor.latex()
-        latex_string = self.replace_variables(latex_string, [r'\epsilon', r'\dot{\varepsilon}', r'T'])
+        latex_string = self.replace_variables(latex_string, [r't', r'\sigma', r'T', r'E', r'\nu'])
         return [latex_string]

@@ -65,6 +65,18 @@ class Controller:
         last_data.set_data_dict(last_data_dict)
         self.set_last_data(last_data)
 
+    def set_weights(self, weights:list) -> None:
+        """
+        Sets weights to the most recently added dataset;
+        uses spline interpolation to weight data points
+
+        Parameters:
+        * `weights`: List of weights
+        """
+        last_data = self.get_last_data()
+        last_data.set_weights(weights)
+        self.set_last_data(last_data)
+
     def fit_model(self):
         """
         Fits the symbolic regression model
@@ -74,8 +86,8 @@ class Controller:
         self.model.fit(fit_data_list)
         print()
 
-    def plot_fit(self, plot_path:str, x_field:str, y_field:str, x_units:str="",
-                 y_units:str="", x_limits:tuple=None, y_limits:tuple=None, **settings) -> None:
+    def plot_fit(self, plot_path:str, x_field:str, y_field:str, x_scale:float, y_scale:float, 
+                 x_units:str="", y_units:str="", x_limits:tuple=None, y_limits:tuple=None, **settings) -> None:
         """
         Plots the results
 
@@ -83,6 +95,8 @@ class Controller:
         * `plot_path`: Path to save the plot
         * `x_field`:   Field to use for the x-axis
         * `y_field`:   Field to use for the y-axis
+        * `x_scale`:   Factor to apply to x values
+        * `y_scale`:   Factor to apply to y values
         * `x_units`:   Units for the x-axis
         * `y_units`:   Units for the y-axis
         * `x_limits`:  Limits to apply on the x-axis
@@ -104,19 +118,25 @@ class Controller:
         # Plot experimental data
         data_dict_list = self.get_data_dict_list()
         for data_dict in data_dict_list:
-            plt.scatter(data_dict[x_field], data_dict[y_field], color=EXP_COLOUR, s=8**2)
+            x_list = [dd*x_scale for dd in data_dict[x_field]]
+            y_list = [dd*y_scale for dd in data_dict[y_field]]
+            plt.scatter(x_list, y_list, color=EXP_COLOUR, s=8**2)
 
         # Plot fitted data
         fit_data_list = self.get_fit_data_list()
         fit_dict_list = self.model.predict(fit_data_list)
         for fit_dict in fit_dict_list:
-            plt.plot(fit_dict[x_field], fit_dict[y_field], color=CAL_COLOUR, linewidth=3)
+            x_list = [fd*x_scale for fd in fit_dict[x_field]]
+            y_list = [fd*y_scale for fd in fit_dict[y_field]]
+            plt.plot(x_list, y_list, color=CAL_COLOUR, linewidth=3)
 
         # Plot predicted data
         prd_data_list = self.get_prd_data_list()
         prd_dict_list = self.model.predict(prd_data_list)
         for prd_dict in prd_dict_list:
-            plt.plot(prd_dict[x_field], prd_dict[y_field], color=VAL_COLOUR, linewidth=3)
+            x_list = [pd*x_scale for pd in prd_dict[x_field]]
+            y_list = [pd*y_scale for pd in prd_dict[y_field]]
+            plt.plot(x_list, y_list, color=VAL_COLOUR, linewidth=3)
 
         # Format and save
         set_limits(x_limits, y_limits)
@@ -169,7 +189,7 @@ class Controller:
             latex_equations = [latex_equations]
         save_latex(equation_path, latex_equations)
 
-    def get_last_data(self) -> dict:
+    def get_last_data(self) -> Dataset:
         """
         Returns the previously added dataset object
         """
@@ -187,6 +207,12 @@ class Controller:
         if len(self.data_list) == 0:
             raise ValueError("No datasets have been added!")
         self.data_list[-1] = last_data
+
+    def get_data_list(self) -> list:
+        """
+        Gets the data list
+        """
+        return self.data_list
 
     def get_data_dict_list(self) -> list:
         """

@@ -7,7 +7,7 @@
 
 # Libraries
 import importlib, os, pathlib, re, sys, numpy as np
-from symbolic.helper.general import transpose
+from symbolic.helper.general import transpose, flatten
 
 # Model Class
 class __Model__:
@@ -95,7 +95,21 @@ class __Model__:
         input_data = np.array(input_data)
         output_data = np.array(output_data)
         return input_data, output_data
-    
+
+    def get_fit_weights(self, data_list:list) -> np.array:
+        """
+        Gets an array of weights corresponding to the fitting data
+
+        Parameters:
+        * `data_list`: List of data objects
+        
+        Returns the new array of weights
+        """
+        weights_list = [data.get_weights() for data in data_list]
+        weights_list = flatten(weights_list)
+        weights_array = np.array(weights_list)
+        return weights_array
+
     def initialise(self, **kwargs) -> None:
         """
         Initialises the model; must be overridden

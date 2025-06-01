@@ -10,6 +10,21 @@
 import math, os, sys
 import numpy as np
 
+def get_spread_list(size:int, limit:int) -> list:
+    """
+    Calculates a list of values of between 0 and a limit,
+    of a certain size
+    
+    Parameters:
+    * `size`:  Size of the returned list
+    * `limit`: The exclusive maximum value of the list
+
+    Returns the spreaded list
+    """
+    if size <= 0 or limit <= 0: return []
+    spread_list = [0] if size == 1 else [int(round(i * (limit - 1) / (size - 1))) for i in range(size)]
+    return spread_list
+
 def periodify(value:float, min:float, max:float) -> float:
     """
     Applies periodicity to a value

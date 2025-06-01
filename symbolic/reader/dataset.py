@@ -6,7 +6,9 @@
 """
 
 # Libraries
+from symbolic.helper.general import get_spread_list
 from symbolic.helper.io import csv_to_dict
+from scipy.interpolate import interp1d
 
 # Dataset class
 class Dataset:
@@ -33,17 +35,14 @@ class Dataset:
 
         # Check and save the data
         for field in self.fields:
-            
-            # Check field existence
             if not field in csv_dict.keys():
                 raise ValueError(f"The '{field}' field does not exist in '{csv_path}'!")
-
-            # Check list lengths
             if isinstance(csv_dict[field], list) and len(csv_dict[field]) != max_length:
                 raise ValueError(f"The '{field}' field in '{csv_path}' does not have the same entries as the other fields!")
-        
-            # Save the data           
             self.data_dict[field] = csv_dict[field]
+
+        # Initialise weigghts
+        self.weights = [1, 1] # uniform weighting
 
     def get_path(self) -> str:
         """
@@ -90,3 +89,33 @@ class Dataset:
         if not field in self.fields:
             raise ValueError(f"The '{field}' field has not been defined!")
         return self.data_dict[field]
+
+    def get_size(self) -> int:
+        """
+        Returns the size of the lists in the dataset;
+        assumes all lists are of the same size
+        """
+        for field in self.data_dict.keys():
+            if isinstance(self.data_dict[field], list):
+                return len(self.data_dict[field]) 
+        return 0
+
+    def set_weights(self, weights:list) -> None:
+        """
+        Sets the weights in the data set
+
+        Parameters:
+        * `weights`: Weights to apply
+        """
+        self.weights = weights
+
+    def get_weights(self) -> list:
+        """
+        Spline interpolates the weights based on the number of data points;
+        assumes relatively uniform spreading of values
+        """
+        size = self.get_size()
+        index_list = get_spread_list(len(self.weights), size)
+        interp = interp1d(index_list, self.weights)
+        weight_list = interp(range(size)).tolist()
+        return weight_list

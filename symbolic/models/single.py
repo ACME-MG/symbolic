@@ -22,7 +22,7 @@ class Model(__Model__):
             binary_operators     = ["+", "*"],
             unary_operators      = ["cos", "exp", "sin", "inv(x) = 1/x"],
             extra_sympy_mappings = {"inv": lambda x: 1 / x},
-            elementwise_loss     = "loss(prediction, target) = (prediction - target)^2",
+            elementwise_loss     = "loss(prediction, target, weight) = weight*(prediction - target)^2",
             output_directory     = self.output_path,
         )
         self.set_input_fields(["strain"])
@@ -36,7 +36,8 @@ class Model(__Model__):
         * `data_list`: List of dictionaries containing data
         """
         input_data, output_data = self.data_list_to_arrays(data_list)
-        self.regressor.fit(input_data, output_data)
+        weights = self.get_fit_weights(data_list)
+        self.regressor.fit(input_data, output_data, weights=weights)
 
     def predict(self, data_list:list) -> list:
         """
