@@ -9,7 +9,7 @@
 import matplotlib.pyplot as plt
 from symbolic.reader.dataset import Dataset
 from symbolic.helper.general import get_thinned_list, flatten
-from symbolic.helper.plotter import prep_plot, set_limits, add_legend, save_plot, save_latex, plot_1to1
+from symbolic.helper.plotter import prep_plot, set_limits, add_legend, save_plot, save_latex, create_1to1_plot
 from symbolic.helper.plotter import EXP_COLOUR, CAL_COLOUR, VAL_COLOUR
 from symbolic.models.__model__ import get_model
 
@@ -87,20 +87,22 @@ class Controller:
         print()
 
     def plot_fit(self, plot_path:str, x_field:str, y_field:str, x_scale:float, y_scale:float, 
-                 x_units:str="", y_units:str="", x_limits:tuple=None, y_limits:tuple=None, **settings) -> None:
+                 x_units:str="", y_units:str="", x_limits:tuple=None, y_limits:tuple=None, 
+                 conditions:dict={}, **settings) -> None:
         """
         Plots the results
 
         Parameters:
-        * `plot_path`: Path to save the plot
-        * `x_field`:   Field to use for the x-axis
-        * `y_field`:   Field to use for the y-axis
-        * `x_scale`:   Factor to apply to x values
-        * `y_scale`:   Factor to apply to y values
-        * `x_units`:   Units for the x-axis
-        * `y_units`:   Units for the y-axis
-        * `x_limits`:  Limits to apply on the x-axis
-        * `y_limits`:  Limits to apply on the y-axis
+        * `plot_path`:  Path to save the plot
+        * `x_field`:    Field to use for the x-axis
+        * `y_field`:    Field to use for the y-axis
+        * `x_scale`:    Factor to apply to x values
+        * `y_scale`:    Factor to apply to y values
+        * `x_units`:    Units for the x-axis
+        * `y_units`:    Units for the y-axis
+        * `x_limits`:   Limits to apply on the x-axis
+        * `y_limits`:   Limits to apply on the y-axis
+        * `conditions`: Conditions to constrain plotting
         """
 
         # Check if model has been defined
@@ -116,14 +118,14 @@ class Controller:
         )
 
         # Plot experimental data
-        data_dict_list = self.get_data_dict_list()
+        data_dict_list = self.get_data_dict_list(conditions)
         for data_dict in data_dict_list:
             x_list = [dd*x_scale for dd in data_dict[x_field]]
             y_list = [dd*y_scale for dd in data_dict[y_field]]
             plt.scatter(x_list, y_list, color=EXP_COLOUR, s=8**2)
 
         # Plot fitted data
-        fit_data_list = self.get_fit_data_list()
+        fit_data_list = self.get_fit_data_list(conditions)
         fit_dict_list = self.model.predict(fit_data_list)
         for fit_dict in fit_dict_list:
             x_list = [fd*x_scale for fd in fit_dict[x_field]]
@@ -131,7 +133,7 @@ class Controller:
             plt.plot(x_list, y_list, color=CAL_COLOUR, linewidth=3)
 
         # Plot predicted data
-        prd_data_list = self.get_prd_data_list()
+        prd_data_list = self.get_prd_data_list(conditions)
         prd_dict_list = self.model.predict(prd_data_list)
         for prd_dict in prd_dict_list:
             x_list = [pd*x_scale for pd in prd_dict[x_field]]
@@ -146,7 +148,8 @@ class Controller:
         )
         save_plot(plot_path, **settings)
 
-    def plot_1to1(self, plot_path:str, handle, label:str="", units:str="", limits:tuple=None) -> None:
+    def plot_1to1(self, plot_path:str, handle, label:str="", units:str="",
+                  limits:tuple=None, conditions:dict={}) -> None:
         """
         Plots 1:1 comparison plots based on a function handle;
         the function must take a dictionary as an argument and
@@ -165,9 +168,9 @@ class Controller:
             raise ValueError("The model has not been defined!")
         
         # Get all data
-        fit_data_list = self.get_fit_data_list()
+        fit_data_list = self.get_fit_data_list(conditions)
         fit_dict_list = self.model.predict(fit_data_list)
-        prd_data_list = self.get_prd_data_list()
+        prd_data_list = self.get_prd_data_list(conditions)
         prd_dict_list = self.model.predict(prd_data_list)
 
         # Apply function handle
@@ -177,7 +180,7 @@ class Controller:
         sim_val_list = flatten([handle(pd) for pd in prd_dict_list])
 
         # Plot and save
-        plot_1to1(exp_cal_list, exp_val_list, sim_cal_list, sim_val_list, label, units, limits)
+        create_1to1_plot(exp_cal_list, exp_val_list, sim_cal_list, sim_val_list, label, units, limits)
         save_plot(plot_path)
 
     def plot_equation(self, equation_path:str) -> None:
@@ -208,35 +211,63 @@ class Controller:
             raise ValueError("No datasets have been added!")
         self.data_list[-1] = last_data
 
-    def get_data_list(self) -> list:
+    def get_data_list(self, conditions:dict={}) -> list:
         """
         Gets the data list
-        """
-        return self.data_list
+        
+        Parameters:
+        * `conditions`: Conditions to constrain plotting
 
-    def get_data_dict_list(self) -> list:
+        Returns the list of datasets
+        """
+        new_data_list = []
+        for data in self.data_list:
+            has_data_list = [data.has_data(field, conditions[field]) for field in conditions.keys()]
+            if not False in has_data_list:
+                new_data_list.append(data)
+        return new_data_list
+
+    def get_data_dict_list(self, conditions:dict={}) -> list:
         """
         Gets the data dictionaries only
+        
+        Parameters:
+        * `conditions`: Conditions to constrain plotting
+
+        Returns the list of dictionaries of datasets
         """
-        return [data.get_data_dict() for data in self.data_list]
+        data_list = self.get_data_list(conditions)
+        return [data.get_data_dict() for data in data_list]
+
+    def get_fit_data_list(self, conditions:dict={}) -> list:
+        """
+        Returns the list of fitting datasets
+        
+        Parameters:
+        * `conditions`: Conditions to constrain plotting
+
+        Returns the list of dictionaries of datasets
+        """
+        data_list = self.get_data_list(conditions)
+        return [data for data in data_list if data.is_fitting()]
+
+    def get_prd_data_list(self, conditions:dict={}) -> list:
+        """
+        Returns the list of prediction datasets
+        
+        Parameters:
+        * `conditions`: Conditions to constrain plotting
+
+        Returns the list of dictionaries of datasets
+        """
+        data_list = self.get_data_list(conditions)
+        return [data for data in data_list if not data.is_fitting()]
 
     def get_num_data(self) -> int:
         """
         Returns the number of datasets added
         """
         return len(self.data_list)
-
-    def get_fit_data_list(self) -> list:
-        """
-        Returns the list of fitting datasets
-        """
-        return [data for data in self.data_list if data.is_fitting()]
-
-    def get_prd_data_list(self) -> list:
-        """
-        Returns the list of prediction datasets
-        """
-        return [data for data in self.data_list if not data.is_fitting()]
 
     def get_num_fit_data(self) -> int:
         """

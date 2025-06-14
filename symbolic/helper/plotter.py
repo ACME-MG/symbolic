@@ -117,8 +117,8 @@ def lighten_colour(colour:str, factor:float=0.5):
     white = (1, 1, 1)
     return tuple(factor * w + (1 - factor) * c for c, w in zip(rgb, white))
 
-def plot_1to1(exp_cal_list:list, exp_val_list:list, sim_cal_list:list, sim_val_list:list,
-              label:str="", units:str="", limits:tuple=None) -> None:
+def create_1to1_plot(exp_cal_list:list, exp_val_list:list, sim_cal_list:list, sim_val_list:list,
+                     label:str="", units:str="", limits:tuple=None) -> None:
     """
     Plots a 1:1 comparison
 

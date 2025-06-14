@@ -26,7 +26,7 @@ def main():
     for file in ["AirBase_800_D7", "AirBase_850_D9", "AirBase_900_D10", "AirBase_950_D11", "AirBase_1000_D12"]:
         itf.add_data(f"tensile/inl/{file}.csv", fitting=True)
         itf.sparsen_data(100)
-        itf.set_weights([2, 1, 0.5, 0.5, 1, 2])
+        itf.set_weights([2, 2, 1, 0.5, 0.5, 1])
 
     # Fit the data
     itf.fit_model()

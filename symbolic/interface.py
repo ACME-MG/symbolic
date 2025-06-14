@@ -178,43 +178,56 @@ class Interface:
         self.__print__(f"Fitting the model against {num_fit_data}/{num_data} datasets ({total_size} points)")
         self.__controller__.fit_model()
 
-    def plot_fit(self, x_field:str, y_field:str, x_units:str="", x_scale:float=1.0, y_scale:float=1.0, 
-                 y_units:str="", x_limits:tuple=None, y_limits:tuple=None) -> None:
+    def plot_fit(self, x_field:str, y_field:str, x_units:str="", x_scale:float=1.0,
+                 y_scale:float=1.0, y_units:str="", x_limits:tuple=None,
+                 y_limits:tuple=None, file_name:str="", conditions:dict={}) -> None:
         """
         Plots the fitting results
 
         Parameters:
-        * `x_field`:  Field to use for the x-axis
-        * `y_field`:  Field to use for the y-axis
-        * `x_scale`:  Factor to apply to x values
-        * `y_scale`:  Factor to apply to y values
-        * `x_limits`: Limits to apply on the x-axis
-        * `y_limits`: Limits to apply on the y-axis
+        * `x_field`:    Field to use for the x-axis
+        * `y_field`:    Field to use for the y-axis
+        * `x_scale`:    Factor to apply to x values
+        * `y_scale`:    Factor to apply to y values
+        * `x_limits`:   Limits to apply on the x-axis
+        * `y_limits`:   Limits to apply on the y-axis
+        * `file_name`:  Custom name for the plot file
+        * `conditions`: Conditions to constrain plotting
         """
         self.__print__(f"Plotting the fit for the {y_field}-{x_field} curve")
-        plot_path = get_file_path_exists(self.__get_output__("plot_fit"), "png")
-        self.__controller__.plot_fit(plot_path, x_field, y_field, x_scale, y_scale, x_units, y_units, x_limits, y_limits)
+        file_name = file_name if file_name != "" else "plot_fit"
+        plot_path = get_file_path_exists(self.__get_output__(file_name), "png")
+        self.__controller__.plot_fit(plot_path, x_field, y_field, x_scale, y_scale,
+                                     x_units, y_units, x_limits, y_limits, conditions)
 
-    def plot_1to1(self, handle, label:str="", units:str="", limits:tuple=None) -> None:
+    def plot_1to1(self, handle, label:str="", units:str="", limits:tuple=None,
+                  file_name:str="", conditions:dict={}) -> None:
         """
         Plots 1:1 comparison plots based on a function handle;
         the function must take a dictionary as an argument and
         return a list of values
 
         Parameters:
-        * `handle`: The function handle
-        * `label`:  Label to represent values
-        * `units`:  Units to place beside label
-        * `limits`: Limits of the plot
+        * `handle`:    The function handle
+        * `label`:     Label to represent values
+        * `units`:     Units to place beside label
+        * `limits`:    Limits of the plot
+        * `file_name`: Custom name for the plot file
+        * `conditions`: Conditions to constrain plotting
         """
         self.__print__("Plotting a 1:1 comparison")
-        plot_path = get_file_path_exists(self.__get_output__("plot_1to1"), "png")
-        self.__controller__.plot_1to1(plot_path, handle, label, units, limits)
+        file_name = file_name if file_name != "" else "plot_1to1"
+        plot_path = get_file_path_exists(self.__get_output__(file_name), "png")
+        self.__controller__.plot_1to1(plot_path, handle, label, units, limits, conditions)
 
-    def plot_equation(self) -> None:
+    def plot_equation(self, file_name:str="") -> None:
         """
         Saves an image of the equation
+
+        Parameters:
+        * `file_name`: Custom name for the plot file
         """
         self.__print__(f"Plotting the equation for the best fit")
-        equation_path = get_file_path_exists(self.__get_output__("equation"), "png")
+        file_name = file_name if file_name != "" else "equation"
+        equation_path = get_file_path_exists(self.__get_output__(file_name), "png")
         self.__controller__.plot_equation(equation_path)

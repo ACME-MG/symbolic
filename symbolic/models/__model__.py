@@ -61,40 +61,29 @@ class __Model__:
         """
         return self.name
 
-    def data_list_to_arrays(self, data_list:list) -> tuple:
+    def get_input(self, data_list:list) -> np.array:
         """
-        Converts a list of data objects into numpy arrays
+        Converts a list of data objects into an input numpy array
 
         Parameters:
         * `data_list`: List of data objects
         
-        Returns the input and output data as numpy arrays
+        Returns the input data as a numpy array
         """
+        input_array = data_list_to_array(data_list, self.input_fields)
+        return input_array
 
-        # Prepare data lists
-        input_data = []
-        output_data = []
+    def get_output(self, data_list:list) -> np.array:
+        """
+        Converts a list of data objects into an output numpy array
 
-        # Sythesise the data
-        for data in data_list:
-            
-            # Get data
-            data_dict = data.get_data_dict()
-            fields = self.input_fields + self.output_fields
-            max_length = max([len(data_dict[field]) for field in fields if isinstance(data_dict[field], list)])
-
-            # Add inputs
-            input_list = [data_dict[field] if isinstance(data_dict[field], list) else [data_dict[field]]*max_length for field in self.input_fields]
-            input_data += transpose(input_list)
-            
-            # Add outputs
-            output_list = [data_dict[field] if isinstance(data_dict[field], list) else [data_dict[field]]*max_length for field in self.output_fields]
-            output_data += transpose(output_list)
-    
-        # Convert into arrays and return
-        input_data = np.array(input_data)
-        output_data = np.array(output_data)
-        return input_data, output_data
+        Parameters:
+        * `data_list`: List of data objects
+        
+        Returns the output data as a numpy array
+        """
+        output_array = data_list_to_array(data_list, self.output_fields)
+        return output_array
 
     def get_fit_weights(self, data_list:list) -> np.array:
         """
@@ -142,22 +131,68 @@ class __Model__:
         """
         raise NotImplementedError(f"The 'get_latex' function has not been implemented for the '{self.name}' model!")
 
-    def replace_variables(self, latex_string:str, new_variables:list) -> str:
-        """
-        Replaces variable names inside a latex string
+def data_list_to_array(data_list:list, field_list:list) -> np.array:
+    """
+    Converts a list of data objects into a numpy array
 
-        Parameters:
-        * `latex_string`:  The latex string
-        * `new_variables`: List of new variables in regex
+    Parameters:
+    * `data_list`:  List of data objects
+    * `field_list`: List of fields
 
-        Returns the replaced latex string
-        """
-        def replacer(match):
-            index = int(match.group(1))
-            if 0 <= index < len(new_variables):
-                return new_variables[index]
-            return match.group(0)
-        return re.sub(r'x_\{(\d+)\}', replacer, latex_string)
+    Returns the data as a numpy array
+    """
+
+    # Prepare data list
+    field_data_list = []
+    
+    # Synthesise the data
+    for data in data_list:
+
+        # Get data
+        data_dict = data.get_data_dict()
+        has_list = True in [isinstance(data_dict[field], list) for field in field_list]
+        if has_list:
+            max_length = max([len(data_dict[field]) for field in field_list if isinstance(data_dict[field], list)])
+        else:
+            max_length = 1
+
+        # Add data
+        field_data_sublist = [data_dict[field] if isinstance(data_dict[field], list) else [data_dict[field]]*max_length for field in field_list]
+        field_data_sublist = transpose(field_data_sublist)
+        field_data_list += field_data_sublist
+
+    # Convert and return
+    field_data_array = np.array(field_data_list)
+    return field_data_array
+
+def replace_variables(latex_string:str, new_variables:list) -> str:
+    """
+    Replaces variable names inside a latex string
+
+    Parameters:
+    * `latex_string`:  The latex string
+    * `new_variables`: List of new variables in regex
+
+    Returns the replaced latex string
+    """
+    def replacer(match):
+        index = int(match.group(1))
+        if 0 <= index < len(new_variables):
+            return new_variables[index]
+        return match.group(0)
+    return re.sub(r'x_\{(\d+)\}', replacer, latex_string)
+
+def equate_to(prepend:str, latex_string:str) -> str:
+    """
+    Performs a simple prepending
+
+    Parameters:
+    * `prepend`:      The string to prepend the larger string
+    * `latex_string`: The larger LaTeX string
+
+    Returns `{prepend} + " = " + {latex_string}`
+    """
+    return f"{prepend} = {latex_string}"
 
 def get_model(model_path:str, output_path:str, **kwargs) -> str:
     """

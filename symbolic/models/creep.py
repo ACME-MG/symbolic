@@ -6,8 +6,10 @@
 """
 
 # Libraries
-from symbolic.models.__model__ import __Model__
+from symbolic.models.__model__ import __Model__, data_list_to_array, replace_variables, equate_to
+import numpy as np
 from pysr import PySRRegressor
+from copy import deepcopy
 
 # Model class
 class Model(__Model__):
@@ -16,16 +18,32 @@ class Model(__Model__):
         """
         Initialises the model
         """
-        self.regressor = PySRRegressor(
-            maxsize              = 20,
-            niterations          = 500,
-            binary_operators     = ["+", "*", "^"],
-            unary_operators      = ["cos", "sin", "exp", "log", "inv(x) = 1/x"],
-            extra_sympy_mappings = {"inv": lambda x: 1/x},
+
+        # Define regressor for time-to-failure
+        self.ttf_reg = PySRRegressor(
+            populations          = 32,
+            population_size      = 32,
+            maxsize              = 32,
+            niterations          = 64,
+            binary_operators     = ["*", "^", "/"],
+            constraints          = {"^": (-1, 1)},
+            elementwise_loss     = "loss(prediction, target) = (prediction - target)^2",
+            output_directory     = self.output_path,
+        )
+
+        # Define regressor for strain
+        self.strain_reg = PySRRegressor(
+            populations          = 32,
+            population_size      = 32,
+            maxsize              = 32,
+            niterations          = 256,
+            binary_operators     = ["+", "*", "^", "/"],
+            constraints          = {"^": (-1, 1)},
+            unary_operators      = ["log", "exp"],
             elementwise_loss     = "loss(prediction, target, weight) = weight*(prediction - target)^2",
             output_directory     = self.output_path,
         )
-        self.set_input_fields(["time", "stress", "temperature", "youngs", "poissons"])
+        self.set_input_fields(["time", "stress", "temperature"])
         self.set_output_fields(["strain"])
 
     def fit(self, data_list:list) -> None:
@@ -35,9 +53,18 @@ class Model(__Model__):
         Parameters:
         * `data_list`: List of dictionaries containing data
         """
-        input_data, output_data = self.data_list_to_arrays(data_list)
+        
+        # Fit the time-to-failure regression model
+        input_data = data_list_to_array(data_list, ["stress", "temperature"])
+        ttf_list = [max(data.get_data("time")) for data in data_list]
+        output_data = np.array([np.array([ttf]) for ttf in ttf_list])
+        self.ttf_reg.fit(input_data, output_data)
+
+        # Fit the strain regression model
+        input_data = self.get_input(data_list)
+        output_data = self.get_output(data_list)
         weights = self.get_fit_weights(data_list)
-        self.regressor.fit(input_data, output_data, weights=weights)
+        self.strain_reg.fit(input_data, output_data, weights=weights)
 
     def predict(self, data_list:list) -> list:
         """
@@ -48,21 +75,46 @@ class Model(__Model__):
 
         Returns the list of predicted data
         """
+
+        # Iterate through data
         prd_dict_list = []
         for data in data_list:
-            input_data, _ = self.data_list_to_arrays([data])
-            output_data = self.regressor.predict(input_data)
+
+            # Predict time-to-failure
+            input_data = data_list_to_array([data], ["stress", "temperature"])
+            time_failure = self.ttf_reg.predict(input_data)[0]
+            
+            # Predict creep strain curve
+            time_list = np.linspace(0, time_failure, len(data.get_data("time"))).tolist()
+            ttf_data = deepcopy(data)
+            ttf_data.set_data("time", time_list)
+            input_ttf_data = self.get_input([ttf_data])
+            output_ttf_data = self.strain_reg.predict(input_ttf_data)
+
+            # Combine and append
             prd_dict = {
-                "time": [0] + [d[0] for d in input_data.tolist()],
-                "strain": [0] + output_data.tolist()
+                "time":   [0] + [d[0] for d in input_ttf_data.tolist()],
+                "strain": [0] + output_ttf_data.tolist()
             }
             prd_dict_list.append(prd_dict)
+        
+        # Return predictions
         return prd_dict_list
 
     def get_latex(self) -> str:
         """
         Returns the LaTeX equation of the final fit; must be overridden
         """
-        latex_string = self.regressor.latex()
-        latex_string = self.replace_variables(latex_string, [r't', r'\sigma', r'T', r'E', r'\nu'])
-        return [latex_string]
+
+        # Get time-to-failure latex equation
+        ttf_reg_ls = self.ttf_reg.latex()
+        ttf_reg_ls = replace_variables(ttf_reg_ls, [r'\sigma', r'T'])
+        ttf_reg_ls = equate_to(r't_f', ttf_reg_ls)
+
+        # Get strain latex equation
+        strain_reg_ls = self.strain_reg.latex()
+        strain_reg_ls = replace_variables(strain_reg_ls, [r't', r'\sigma', r'T'])
+        strain_reg_ls = equate_to(r'\epsilon', strain_reg_ls)
+        
+        # Combine and return
+        return [ttf_reg_ls, strain_reg_ls]

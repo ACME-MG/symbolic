@@ -1,5 +1,5 @@
 """
- Title:         Basic model
+ Title:         Basic tensile model
  Description:   Performs the symbolic regression
  Author:        Janzen Choi
 
@@ -17,17 +17,15 @@ class Model(__Model__):
         Initialises the model
         """
         self.regressor = PySRRegressor(
-            populations          = 32,
-            population_size      = 32,
-            maxsize              = 32,
-            niterations          = 500,
-            binary_operators     = ["+", "*", "^"],
-            unary_operators      = ["cos", "sin", "exp", "log", "inv(x) = 1/x"],
-            extra_sympy_mappings = {"inv": lambda x: 1/x},
+            maxsize              = 10,
+            niterations          = 20,
+            binary_operators     = ["+", "*"],
+            unary_operators      = ["cos", "exp", "sin", "inv(x) = 1/x"],
+            extra_sympy_mappings = {"inv": lambda x: 1 / x},
             elementwise_loss     = "loss(prediction, target, weight) = weight*(prediction - target)^2",
             output_directory     = self.output_path,
         )
-        self.set_input_fields(["strain", "strain_rate", "temperature"])
+        self.set_input_fields(["strain"])
         self.set_output_fields(["stress"])
 
     def fit(self, data_list:list) -> None:
@@ -67,6 +65,6 @@ class Model(__Model__):
         Returns the LaTeX equation of the final fit; must be overridden
         """
         latex_string = self.regressor.latex()
-        latex_string = replace_variables(latex_string, [r'\epsilon', r'\dot{\varepsilon}', r'T'])
+        latex_string = replace_variables(latex_string, [r'\epsilon'])
         latex_string = equate_to(r'\sigma', latex_string)
         return [latex_string]
