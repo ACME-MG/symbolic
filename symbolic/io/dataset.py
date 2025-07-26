@@ -8,7 +8,7 @@
 # Libraries
 import numpy as np
 from symbolic.helper.general import get_spread_list
-from symbolic.helper.io import csv_to_dict
+from symbolic.io.files import csv_to_dict
 from scipy.interpolate import interp1d
 from copy import deepcopy
 

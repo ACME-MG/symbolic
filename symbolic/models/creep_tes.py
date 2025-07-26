@@ -7,8 +7,9 @@
 
 # Libraries
 from symbolic.models.__model__ import __Model__, convert_data, replace_variables, equate_to, sparsen_data
+from symbolic.regression.submodel import create_tes
 import numpy as np
-from pysr import PySRRegressor, TemplateExpressionSpec
+from pysr import PySRRegressor
 from copy import deepcopy
 
 # Model class
@@ -32,13 +33,7 @@ class Model(__Model__):
         )
 
         # Define expression template
-        expression_spec = TemplateExpressionSpec(
-            expressions    = ["f"],
-            variable_names = [f"x{i}" for i in range(3)],
-            parameters     = {"p1": 1, "p2": 1, "p3": 1},
-            combine        = "p1[1]*x0^p2[1] + f(x0,x1,x2)",
-            # combine        = "p1[1] * sin(f(x1, x2)) + p1[2] * g(x3) + p2[1]",
-        )
+        expression_spec = create_tes
 
         # Define regressor for strain
         self.strain_reg = PySRRegressor(

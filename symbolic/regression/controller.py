@@ -7,7 +7,7 @@
 
 # Libraries
 import matplotlib.pyplot as plt
-from symbolic.reader.dataset import Dataset
+from symbolic.io.dataset import Dataset
 from symbolic.helper.general import get_thinned_list, flatten
 from symbolic.helper.plotter import prep_plot, set_limits, add_legend, save_plot, save_latex, create_1to1_plot
 from symbolic.helper.plotter import EXP_COLOUR, CAL_COLOUR, VAL_COLOUR

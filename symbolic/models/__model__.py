@@ -8,7 +8,7 @@
 # Libraries
 import importlib, os, pathlib, re, sys, numpy as np
 from symbolic.helper.general import transpose, flatten, get_thinned_list
-from symbolic.reader.dataset import Dataset
+from symbolic.io.dataset import Dataset
 
 # Model Class
 class __Model__:

@@ -1,50 +1,15 @@
-import matplotlib.pyplot as plt
+"""
+ Title:         Expression
+ Description:   Contains expression related functions
+ Author:        Janzen Choi
+
+"""
+
+# Libraries
+from symbolic.helper.general import round_sf
 from sympy import sympify
 from sympy.parsing.sympy_parser import parse_expr
 from sympy import latex
-
-def round_sf(value:float, sf:int) -> float:
-    """
-    Rounds a float to a number of significant figures
-
-    Parameters:
-    * `value`: The value to be rounded; accounts for lists
-    * `sf`:    The number of significant figures
-
-    Returns the rounded number
-    """
-    if isinstance(value, list):
-        return [round_sf(v, sf) for v in value]
-    format_str = "{:." + str(sf) + "g}"
-    rounded_value = float(format_str.format(value))
-    return rounded_value
-
-def save_plot(file_path:str, settings:dict={}) -> None:
-    """
-    Saves the plot and clears the figure
-
-    Parameters:
-    * `file_path`: The path to save the plot
-    * `settings`:  Settings for the `savefig` function
-    """
-    plt.savefig(file_path, **settings)
-    plt.cla()
-    plt.clf()
-    plt.close()
-
-def save_latex(file_path:str, latex_equations:list) -> None:
-    """
-    Saves the plot and clears the figure
-
-    Parameters:
-    * `file_path`:      The path to save the plot
-    * `latex_equation`: List of equation in LaTeX
-    """
-    plt.figure(figsize=(8, 0.8 * len(latex_equations)))  # Adjust height based on number of equations
-    for idx, eq in enumerate(latex_equations):
-        plt.text(0.5, 1 - (idx + 1) / (len(latex_equations) + 1), f"${eq}$", fontsize=18, ha="center", va="center")
-    plt.axis("off")
-    save_plot(file_path, {"bbox_inches": "tight"})
 
 def get_params(expression:str) -> list:
     """
@@ -109,10 +74,3 @@ def julia_to_latex(julia:str, num_inputs:int, submodels:list) -> str:
     # Return latex string
     latex_str = latex(parse_expr(julia_expression, evaluate=False), mul_symbol=' ')
     return f"{latex_str}"
-
-julia_expression = "f = ((#1 * -5.318988) - ((#1 + #2) * -0.58049315)) - ((#1 + -41.532288) - #1); p1 = [1.1669047, 1.627686]"
-submodels = [
-    "A * x1 ^ n",
-]
-latex_str = julia_to_latex(julia_expression, 1, submodels)
-save_latex("eqn.png", [latex_str])

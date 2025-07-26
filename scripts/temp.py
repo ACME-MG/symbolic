@@ -4,9 +4,41 @@ from sympy import sympify
  
 rng = np.random.RandomState(0)
 X = np.linspace(1, 50, 100).reshape(-1, 1)
-y = 2.5 * X[:, 0] ** 1.4 - 9*X[:,0] + 50
+# y = 2.5 * X[:, 0] ** 1.4 - 9*X[:,0] + 50
+y = 2.5 * X[:, 0]
 
-def create_tes(num_inputs:int, submodels:list):
+def round_sf(value:float, sf:int) -> float:
+    """
+    Rounds a float to a number of significant figures
+
+    Parameters:
+    * `value`: The value to be rounded; accounts for lists
+    * `sf`:    The number of significant figures
+
+    Returns the rounded number
+    """
+    if isinstance(value, list):
+        return [round_sf(v, sf) for v in value]
+    format_str = "{:." + str(sf) + "g}"
+    rounded_value = float(format_str.format(value))
+    return rounded_value
+
+def get_params(expression:str) -> list:
+    """
+    Gets the parameters from an expression
+
+    Parameters:
+    * `expression`: The expression string
+
+    Returns the list of parameters as strings
+    """
+    expression_str = expression.replace("^", "**")
+    expression = sympify(expression_str)
+    variables = expression.free_symbols
+    parameters = [str(variable) for variable in variables if not str(variable).startswith("x")]
+    return parameters
+
+def create_tes(num_inputs:int, submodels:list) -> TemplateExpressionSpec:
     """
     Creates a template expression specification
 
@@ -27,10 +59,7 @@ def create_tes(num_inputs:int, submodels:list):
     for i, submodel in enumerate(submodels):
 
         # Extract the parameters
-        expression_str = submodel.replace("^", "**")
-        expression = sympify(expression_str)
-        variables = expression.free_symbols
-        parameters = [str(variable) for variable in variables if not str(variable).startswith("x")]
+        parameters = get_params(submodel)
         num_params_list.append(len(parameters))
 
         # Construct the combine string
@@ -42,7 +71,7 @@ def create_tes(num_inputs:int, submodels:list):
     # Define the parameters dict
     parameters_dict = {}
     for i, num_params in enumerate(num_params_list):
-        parameters_dict[f"p{i}"] = num_params
+        parameters_dict[f"p{i+1}"] = num_params
 
     # Create the combined string 
     combined_str = submodel_defs + "f(" + ", ".join(inputs) + ", "
@@ -60,8 +89,6 @@ def create_tes(num_inputs:int, submodels:list):
 expression_spec = create_tes(
     num_inputs = 1,
     submodels = [
-        "A * x1 ^ n",
-        "A * x1 ^ n",
         "A * x1 ^ n",
     ]
 )

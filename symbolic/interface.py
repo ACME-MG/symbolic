@@ -7,7 +7,7 @@
 
 # Libraries
 import inspect, re, time
-from symbolic.helper.io import safe_mkdir, get_file_path_exists
+from symbolic.io.files import safe_mkdir, get_file_path_exists
 from symbolic.helper.derivative import remove_after_sp
 from symbolic.regression.controller import Controller
 
