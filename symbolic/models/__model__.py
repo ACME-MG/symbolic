@@ -7,7 +7,8 @@
 
 # Libraries
 import importlib, os, pathlib, re, sys, numpy as np
-from symbolic.helper.general import transpose, flatten
+from symbolic.helper.general import transpose, flatten, get_thinned_list
+from symbolic.reader.dataset import Dataset
 
 # Model Class
 class __Model__:
@@ -22,68 +23,28 @@ class __Model__:
         """
         self.name = name
         self.output_path = output_path
-        self.input_fields = []
-        self.output_fields = []
+        self.fields = []
 
-    def set_input_fields(self, input_fields:list) -> None:
+    def set_fields(self, fields:list) -> None:
         """
-        Sets the input fields
+        Sets the required fields
         
         Parameters:
-        * `input_fields`: List of fields to use as inputs
+        * `fields`: List of fields to use as inputs or outputs
         """
-        self.input_fields = input_fields
+        self.fields = fields
 
-    def set_output_fields(self, output_fields:list) -> None:
+    def get_fields(self) -> list:
         """
-        Sets the output fields
-        
-        Parameters:
-        * `output_fields`: List of fields to use as outputs
+        Returns the list of fields to use as inputs or outputs
         """
-        self.output_fields = output_fields
-
-    def get_input_fields(self) -> list:
-        """
-        Returns the list of fields to use as inputs
-        """
-        return self.input_fields
-
-    def get_output_fields(self) -> list:
-        """
-        Returns the list of fields to use as outputs
-        """
-        return self.output_fields
+        return self.fields
 
     def get_name(self) -> str:
         """
         Gets the name of the model
         """
         return self.name
-
-    def get_input(self, data_list:list) -> np.array:
-        """
-        Converts a list of data objects into an input numpy array
-
-        Parameters:
-        * `data_list`: List of data objects
-        
-        Returns the input data as a numpy array
-        """
-        input_array = data_list_to_array(data_list, self.input_fields)
-        return input_array
-
-    def get_output(self, data_list:list) -> np.array:
-        """
-        Converts a list of data objects into an output numpy array
-
-        Parameters:
-        * `data_list`: List of data objects
-        
-        Returns the output data as a numpy array
-        """
-        output_array = data_list_to_array(data_list, self.output_fields)
-        return output_array
 
     def get_fit_weights(self, data_list:list) -> np.array:
         """
@@ -131,7 +92,24 @@ class __Model__:
         """
         raise NotImplementedError(f"The 'get_latex' function has not been implemented for the '{self.name}' model!")
 
-def data_list_to_array(data_list:list, field_list:list) -> np.array:
+def sparsen_data(data:Dataset, new_size:int) -> Dataset:
+    """
+    Sparsens a datset
+
+    Parameters:
+    * `data`:     Data object
+    * `new_size`: New size for the data
+
+    Returns the sparsened data
+    """
+    data_dict = data.get_data_dict()
+    for field in data_dict.keys():
+        if isinstance(data_dict[field], list):
+            data_dict[field] = get_thinned_list(data_dict[field], new_size)
+    data.set_data_dict(data_dict)
+    return data
+        
+def convert_data(data_list:list, field_list:list) -> np.array:
     """
     Converts a list of data objects into a numpy array
 

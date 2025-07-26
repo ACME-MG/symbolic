@@ -31,17 +31,27 @@ class Model(__Model__):
             output_directory = self.output_path,
         )
 
+        # Define expression template
+        expression_spec = TemplateExpressionSpec(
+            expressions    = ["f"],
+            variable_names = [f"x{i}" for i in range(3)],
+            parameters     = {"p1": 1, "p2": 1, "p3": 1},
+            combine        = "p1[1]*x0^p2[1] + f(x0,x1,x2)",
+            # combine        = "p1[1] * sin(f(x1, x2)) + p1[2] * g(x3) + p2[1]",
+        )
+
         # Define regressor for strain
         self.strain_reg = PySRRegressor(
-            populations      = 32,
-            population_size  = 32,
-            maxsize          = 32,
-            niterations      = 256,
-            binary_operators = ["+", "*", "^", "/"],
-            constraints      = {"^": (-1, 1)},
-            unary_operators  = ["log", "exp"],
-            elementwise_loss = "loss(prediction, target, weight) = weight*(prediction - target)^2",
-            output_directory = self.output_path,
+            expression_spec = expression_spec,
+            populations     = 32,
+            population_size = 32,
+            maxsize         = 32,
+            niterations     = 256,
+            binary_operators= ["+", "*", "^", "/"],
+            constraints     = {"^": (-1, 1)},
+            unary_operators = ["log", "exp"],
+            elementwise_loss= "loss(prediction, target, weight) = weight*(prediction - target)^2",
+            output_directory= self.output_path,
         )
         self.set_fields(["time", "stress", "temperature", "strain"])
 

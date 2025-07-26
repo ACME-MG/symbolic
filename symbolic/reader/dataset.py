@@ -86,11 +86,10 @@ class Dataset:
         Parameters:
         * `field`: The field under which the data is stored
         * `data`:  The data to be set
-        
-        Returns the data under the defined field
         """
-        if not field in self.fields:
-            raise ValueError(f"The '{field}' field has not been defined!")
+        max_length = max([len(self.data_dict[field]) for field in self.fields if isinstance(self.data_dict[field], list)])
+        if isinstance(data, list) and len(data) != max_length:
+            raise ValueError(f"The added '{field}' field in does not have the same entries as the existing fields!")
         self.data_dict[field] = data
     
     def get_data(self, field:str) -> list:

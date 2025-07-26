@@ -6,7 +6,7 @@
 """
 
 # Libraries
-from symbolic.models.__model__ import __Model__, replace_variables, equate_to
+from symbolic.models.__model__ import __Model__, replace_variables, equate_to, convert_data
 from pysr import PySRRegressor
 
 # Model class
@@ -25,8 +25,7 @@ class Model(__Model__):
             elementwise_loss     = "loss(prediction, target, weight) = weight*(prediction - target)^2",
             output_directory     = self.output_path,
         )
-        self.set_input_fields(["strain"])
-        self.set_output_fields(["stress"])
+        self.set_fields(["strain", "stress"])
 
     def fit(self, data_list:list) -> None:
         """
@@ -35,8 +34,8 @@ class Model(__Model__):
         Parameters:
         * `data_list`: List of dictionaries containing data
         """
-        input_data = self.get_input(data_list)
-        output_data = self.get_output(data_list)
+        input_data = convert_data(data_list, ["strain"])
+        output_data = convert_data(data_list, ["stress"])
         weights = self.get_fit_weights(data_list)
         self.regressor.fit(input_data, output_data, weights=weights)
 
@@ -51,7 +50,7 @@ class Model(__Model__):
         """
         prd_dict_list = []
         for data in data_list:
-            input_data = self.get_input([data])
+            input_data = convert_data([data], ["strain"])
             output_data = self.regressor.predict(input_data)
             prd_dict = {
                 "strain": [0] + [d[0] for d in input_data.tolist()],

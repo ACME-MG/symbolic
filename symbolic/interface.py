@@ -8,6 +8,7 @@
 # Libraries
 import inspect, re, time
 from symbolic.helper.io import safe_mkdir, get_file_path_exists
+from symbolic.helper.derivative import remove_after_sp
 from symbolic.regression.controller import Controller
 
 # Interface Class
@@ -108,18 +109,22 @@ class Interface:
         self.__print__(f"Initialising the '{model_name}' model")
         self.__controller__.define_model(model_name, **kwargs)
 
-    def add_data(self, csv_path:str, fitting:bool=True) -> None:
+    def add_data(self, csv_path:str, fitting:bool=True, weights:list=None) -> None:
         """
         Adds fitting data
 
         Parameters:
         * `csv_path`: Path to the csv file containing the data
         * `fitting`:  Whether the data will be used for fitting
+        * `weights`:  List of weights; does not apply weights if undefined
         """
         csv_path = self.__get_input__(csv_path)
-        self.__print__(f"Reading data from '{csv_path}'")
+        fit_str = "calibration" if fitting else "validation"
+        self.__print__(f"Reading {fit_str} data from '{csv_path}'")
         self.__controller__.add_data(csv_path, fitting)
-
+        if weights != None:
+            self.__controller__.set_weights(weights)
+            
     def get_data_dict(self) -> dict:
         """
         Retrieves last added data
@@ -153,17 +158,22 @@ class Interface:
         self.__print__(f"Sparsening data ({old_size} -> {new_size})", sub_index=True)
         self.__controller__.sparsen_data(new_size)
 
-    def set_weights(self, weights:list) -> None:
+    def remove_oxidation(self, window:int=0.1, acceptance:float=0.9) -> None:
         """
-        Sets weights to the most recently added dataset;
-        uses spline interpolation to weight data points;
-        assumes relatively uniform spreading of values
-
+        Removes the data after the tertiary creep for the most recently added
+        
         Parameters:
-        * `weights`: List of weights
+        * `window`:     The window ratio to identify the stationary points of the derivative; the actual
+                        window size is the product of `window` and the number of data points (1000)
+        * `acceptance`: The acceptance value for identifying the nature of stationary points; should
+                        have a value between 0.5 and 1.0
         """
-        self.__print__(f"Applying weights ({weights})", sub_index=True)
-        self.__controller__.set_weights(weights)
+        self.__print__(f"Removing the creep oxidisation effects", sub_index=True)
+        data = self.__controller__.get_last_data()
+        data_dict = data.get_data_dict()
+        data_dict = remove_after_sp(data_dict, "max", "time", "strain", window, acceptance, 0)
+        data.set_data_dict(data_dict)
+        self.__controller__.set_last_data(data)
 
     def fit_model(self) -> None:
         """

@@ -35,9 +35,7 @@ class Controller:
         * `model_name`: Name of the model
         """
         self.model = get_model(model_name, self.output_path, **kwargs)
-        self.input_fields = self.model.get_input_fields()
-        self.output_fields = self.model.get_output_fields()
-        self.all_fields = self.input_fields + self.output_fields
+        self.fields = self.model.get_fields()
 
     def add_data(self, csv_path:str, fitting:bool=True) -> None:
         """
@@ -47,7 +45,7 @@ class Controller:
         * `csv_path`: Path to the csv file containing the data
         * `fitting`:  Whether the data will be used for fitting
         """
-        data = Dataset(csv_path, self.all_fields, fitting)
+        data = Dataset(csv_path, self.fields, fitting)
         self.data_list.append(data)
 
     def sparsen_data(self, new_size:int=100) -> None:
