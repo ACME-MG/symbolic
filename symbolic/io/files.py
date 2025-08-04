@@ -143,12 +143,22 @@ def dict_to_stdout(data_dict:dict, padding:int=1) -> None:
     * `data_dict`: The dictionary to be displayed
     * `padding`:   Padding to apply between columns
     """
-    
-    # Extract headers and turn all values into lists
+
+    # Extract headers and identify maximum list size
     headers = data_dict.keys()
+    size_list = []
+    for header in headers:
+        if isinstance(data_dict[header], list):
+            size_list.append(len(data_dict[header])) 
+    max_size = 1 if size_list == [] else max(size_list)
+
+    # Extract headers and turn all values into lists
     for header in headers:
         if not isinstance(data_dict[header], list):
             data_dict[header] = [data_dict[header]]
+        if len(data_dict[header]) < max_size:
+            padding_size = max_size - len(data_dict[header])
+            data_dict[header] += padding_size*[-1]
     
     # Identify the lengths of each column
     max_lengths = []

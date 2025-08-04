@@ -9,6 +9,9 @@
 import sys; sys.path += [".."]
 from symbolic.interface import Interface
 
+# Constants
+WEIGHTS = [2, 2, 1, 0.5, 0.5, 1]
+
 def main():
     """
     Main function
@@ -17,16 +20,13 @@ def main():
     # Initialise
     itf = Interface()
     # itf.define_model("single")
-    itf.define_model("tensile")
+    itf.define_model("tensile_tes")
 
     # Add fitting data
     # itf.add_data("tensile/inl/AirBase_20_D5.csv")
-    # itf.set_weights([2, 1, 0.5, 0.5, 1])
-    # itf.sparsen_data(100)
+    # itf.add_data("tensile/inl/AirBase_800_D7.csv")
     for file in ["AirBase_800_D7", "AirBase_850_D9", "AirBase_900_D10", "AirBase_950_D11", "AirBase_1000_D12"]:
-        itf.add_data(f"tensile/inl/{file}.csv", fitting=True)
-        itf.sparsen_data(100)
-        itf.set_weights([2, 2, 1, 0.5, 0.5, 1])
+        itf.add_data(f"tensile/inl/{file}.csv", fitting=True, weights=WEIGHTS)
 
     # Fit the data
     itf.fit_model()

@@ -158,6 +158,18 @@ class Interface:
         self.__print__(f"Sparsening data ({old_size} -> {new_size})", sub_index=True)
         self.__controller__.sparsen_data(new_size)
 
+    def change_field(self, function_handler) -> None:
+        """
+        Uses a function to change the values in a field;
+        the function should take in a dictionary and return
+        a dictionary
+
+        Parameters:
+        * `function_handle`: The function handle
+        """
+        self.__print__(f"Changing the added datasets")
+        self.__controller__.change_field(function_handler)
+
     def remove_oxidation(self, window:int=0.1, acceptance:float=0.9) -> None:
         """
         Removes the data after the tertiary creep for the most recently added
@@ -173,6 +185,24 @@ class Interface:
         data_dict = data.get_data_dict()
         data_dict = remove_after_sp(data_dict, "max", "time", "strain", window, acceptance, 0)
         data.set_data_dict(data_dict)
+        self.__controller__.set_last_data(data)
+
+    def remove_damage(self, window:int=0.1, acceptance:float=0.9) -> None:
+        """
+        Removes the tertiary creep from the most recently added creep curve, by removing the data
+        points after the minimum creep rate
+        
+        Parameters:
+        * `window`:     The window ratio to identify the stationary points of the derivative; the actual
+                        window size is the product of `window` and the number of data points (1000)
+        * `acceptance`: The acceptance value for identifying the nature of stationary points; should
+                        have a value between 0.5 and 1.0
+        """
+        self.__print__(f"Removing the tertiary creep", sub_index=True)
+        data = self.__controller__.get_last_data()
+        data_dict = data.get_data_dict()
+        data_dict = remove_after_sp(data_dict, "min", "time", "strain", window, acceptance, 0)
+        self.__controller__.set_last_data(data)
         self.__controller__.set_last_data(data)
 
     def fit_model(self) -> None:
@@ -214,15 +244,15 @@ class Interface:
                   file_name:str="", conditions:dict={}) -> None:
         """
         Plots 1:1 comparison plots based on a function handle;
-        the function must take a dictionary as an argument and
-        return a list of values
+        the function must take in two dictionaries (`raw_dict`, `sim_dict`) as arguments and
+        return a tuple of two lists of values corresponding to the raw and simulated data
 
         Parameters:
-        * `handle`:    The function handle
-        * `label`:     Label to represent values
-        * `units`:     Units to place beside label
-        * `limits`:    Limits of the plot
-        * `file_name`: Custom name for the plot file
+        * `handle`:     The function handle
+        * `label`:      Label to represent values
+        * `units`:      Units to place beside label
+        * `limits`:     Limits of the plot
+        * `file_name`:  Custom name for the plot file
         * `conditions`: Conditions to constrain plotting
         """
         self.__print__("Plotting a 1:1 comparison")

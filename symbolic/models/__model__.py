@@ -6,9 +6,8 @@
 """
 
 # Libraries
-import importlib, os, pathlib, re, sys, numpy as np
-from symbolic.helper.general import transpose, flatten, get_thinned_list
-from symbolic.io.dataset import Dataset
+import importlib, os, pathlib, sys, numpy as np
+from symbolic.helper.general import flatten
 
 # Model Class
 class __Model__:
@@ -91,86 +90,6 @@ class __Model__:
         Returns the LaTeX equation of the final fit; must be overridden
         """
         raise NotImplementedError(f"The 'get_latex' function has not been implemented for the '{self.name}' model!")
-
-def sparsen_data(data:Dataset, new_size:int) -> Dataset:
-    """
-    Sparsens a datset
-
-    Parameters:
-    * `data`:     Data object
-    * `new_size`: New size for the data
-
-    Returns the sparsened data
-    """
-    data_dict = data.get_data_dict()
-    for field in data_dict.keys():
-        if isinstance(data_dict[field], list):
-            data_dict[field] = get_thinned_list(data_dict[field], new_size)
-    data.set_data_dict(data_dict)
-    return data
-        
-def convert_data(data_list:list, field_list:list) -> np.array:
-    """
-    Converts a list of data objects into a numpy array
-
-    Parameters:
-    * `data_list`:  List of data objects
-    * `field_list`: List of fields
-
-    Returns the data as a numpy array
-    """
-
-    # Prepare data list
-    field_data_list = []
-    
-    # Synthesise the data
-    for data in data_list:
-
-        # Get data
-        data_dict = data.get_data_dict()
-        has_list = True in [isinstance(data_dict[field], list) for field in field_list]
-        if has_list:
-            max_length = max([len(data_dict[field]) for field in field_list if isinstance(data_dict[field], list)])
-        else:
-            max_length = 1
-
-        # Add data
-        field_data_sublist = [data_dict[field] if isinstance(data_dict[field], list) else [data_dict[field]]*max_length for field in field_list]
-        field_data_sublist = transpose(field_data_sublist)
-        field_data_list += field_data_sublist
-
-    # Convert and return
-    field_data_array = np.array(field_data_list)
-    return field_data_array
-
-def replace_variables(latex_string:str, new_variables:list) -> str:
-    """
-    Replaces variable names inside a latex string
-
-    Parameters:
-    * `latex_string`:  The latex string
-    * `new_variables`: List of new variables in regex
-
-    Returns the replaced latex string
-    """
-    def replacer(match):
-        index = int(match.group(1))
-        if 0 <= index < len(new_variables):
-            return new_variables[index]
-        return match.group(0)
-    return re.sub(r'x_\{(\d+)\}', replacer, latex_string)
-
-def equate_to(prepend:str, latex_string:str) -> str:
-    """
-    Performs a simple prepending
-
-    Parameters:
-    * `prepend`:      The string to prepend the larger string
-    * `latex_string`: The larger LaTeX string
-
-    Returns `{prepend} + " = " + {latex_string}`
-    """
-    return f"{prepend} = {latex_string}"
 
 def get_model(model_path:str, output_path:str, **kwargs) -> str:
     """

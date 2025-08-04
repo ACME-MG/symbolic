@@ -89,20 +89,6 @@ def save_plot(file_path:str, settings:dict={}) -> None:
     plt.clf()
     plt.close()
 
-def save_latex(file_path:str, latex_equations:list) -> None:
-    """
-    Saves the plot and clears the figure
-
-    Parameters:
-    * `file_path`:      The path to save the plot
-    * `latex_equation`: List of equation in LaTeX
-    """
-    plt.figure(figsize=(8, 0.8 * len(latex_equations)))  # Adjust height based on number of equations
-    for idx, eq in enumerate(latex_equations):
-        plt.text(0.5, 1 - (idx + 1) / (len(latex_equations) + 1), f"${eq}$", fontsize=18, ha="center", va="center")
-    plt.axis("off")
-    save_plot(file_path, {"bbox_inches": "tight"})
-
 def lighten_colour(colour:str, factor:float=0.5):
     """
     Lighten a color by mixing it with white
@@ -117,14 +103,14 @@ def lighten_colour(colour:str, factor:float=0.5):
     white = (1, 1, 1)
     return tuple(factor * w + (1 - factor) * c for c, w in zip(rgb, white))
 
-def create_1to1_plot(exp_cal_list:list, exp_val_list:list, sim_cal_list:list, sim_val_list:list,
+def create_1to1_plot(raw_cal_list:list, raw_val_list:list, sim_cal_list:list, sim_val_list:list,
                      label:str="", units:str="", limits:tuple=None) -> None:
     """
     Plots a 1:1 comparison
 
     Parameters:
-    * `sim_cal_list`: List of experimental calibrated values
-    * `sim_val_list`: List of experimental validated values
+    * `raw_cal_list`: List of raw calibrated values
+    * `raw_val_list`: List of raw validated values
     * `sim_cal_list`: List of simulated calibrated values
     * `sim_val_list`: List of simulated validated values
     * `label`:        Label to represent values
@@ -138,7 +124,7 @@ def create_1to1_plot(exp_cal_list:list, exp_val_list:list, sim_cal_list:list, si
     
     # Determine limits if undefined
     if limits == None:
-        combined_list = exp_cal_list + exp_val_list + sim_cal_list + sim_val_list
+        combined_list = raw_cal_list + raw_val_list + sim_cal_list + sim_val_list
         limits = (min(combined_list), max(combined_list))
     set_limits(limits, limits)
 
@@ -149,10 +135,10 @@ def create_1to1_plot(exp_cal_list:list, exp_val_list:list, sim_cal_list:list, si
     plt.plot([limits[0], limits[1]], [limits[0], limits[1]], color="black", linestyle="--", linewidth=1)
 
     # Plot data
-    ch = plt.scatter(sim_cal_list, exp_cal_list, color=CAL_COLOUR, edgecolor="black", linewidth=1, label="Calibration", marker="o", s=8**2, zorder=3)
-    vh = plt.scatter(sim_val_list, exp_val_list, color=VAL_COLOUR, edgecolor="black", linewidth=1, label="Validation",  marker="o", s=8**2, zorder=3)
+    ch = plt.scatter(sim_cal_list, raw_cal_list, color=CAL_COLOUR, edgecolor="black", linewidth=1, label="Calibration", marker="o", s=8**2, zorder=3)
+    vh = plt.scatter(sim_val_list, raw_val_list, color=VAL_COLOUR, edgecolor="black", linewidth=1, label="Validation",  marker="o", s=8**2, zorder=3)
     handles = [ch]
-    if exp_val_list != []:
+    if raw_val_list != []:
         handles += [vh]
     legend = plt.legend(handles=handles, ncol=1, framealpha=1, edgecolor="black", fancybox=True, facecolor="white", fontsize=12, loc="upper left")
     plt.gca().add_artist(legend)

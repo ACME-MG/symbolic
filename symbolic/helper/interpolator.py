@@ -47,3 +47,21 @@ class Interpolator:
         Returns the evaluated values
         """
         return list(splev(x_list, self.spl))
+
+def intervaluate(x_list:list, y_list:list, x_value:float) -> float:
+    """
+    Quickly interpolates using two lists of values and evaluates
+    the interpolator at a single point
+    
+    Parameters:
+    * `x_list`:  List of x values
+    * `y_list`:  List of y values
+    * `x_value`: Value to evaluate at; if list, evaluates all
+    
+    Returns the evaluated y value
+    """
+    if isinstance(x_value, list):
+        return [intervaluate(x_list, y_list, x) for x in x_value]
+    interpolator = Interpolator(x_list, y_list, len(x_list))
+    y_value = interpolator.evaluate([x_value])[0]
+    return y_value

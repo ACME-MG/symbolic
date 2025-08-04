@@ -9,7 +9,8 @@
 import matplotlib.pyplot as plt
 from symbolic.io.dataset import Dataset
 from symbolic.helper.general import get_thinned_list, flatten
-from symbolic.helper.plotter import prep_plot, set_limits, add_legend, save_plot, save_latex, create_1to1_plot
+from symbolic.helper.plotter import prep_plot, set_limits, add_legend, save_plot, create_1to1_plot
+from symbolic.regression.expression import save_latex
 from symbolic.helper.plotter import EXP_COLOUR, CAL_COLOUR, VAL_COLOUR
 from symbolic.models.__model__ import get_model
 
@@ -62,6 +63,20 @@ class Controller:
                 last_data_dict[field] = get_thinned_list(last_data_dict[field], new_size)
         last_data.set_data_dict(last_data_dict)
         self.set_last_data(last_data)
+
+    def change_field(self, function_handler) -> None:
+        """
+        Uses a function to change the values in a field;
+        the function should take in a dictionary and return
+        a dictionary
+
+        Parameters:
+        * `function_handle`: The function handle
+        """
+        for data in self.data_list:
+            data_dict = data.get_data_dict()
+            data_dict = function_handler(data_dict)
+            data.set_data_dict(data_dict)
 
     def set_weights(self, weights:list) -> None:
         """
@@ -166,19 +181,39 @@ class Controller:
             raise ValueError("The model has not been defined!")
         
         # Get all data
-        fit_data_list = self.get_fit_data_list(conditions)
-        fit_dict_list = self.model.predict(fit_data_list)
-        prd_data_list = self.get_prd_data_list(conditions)
-        prd_dict_list = self.model.predict(prd_data_list)
+        raw_fit_data_list = self.get_fit_data_list(conditions)
+        raw_fit_dict_list = [data.get_data_dict() for data in raw_fit_data_list]
+        sim_fit_dict_list = self.model.predict(raw_fit_data_list)
+        raw_prd_data_list = self.get_prd_data_list(conditions)
+        raw_prd_dict_list = [data.get_data_dict() for data in raw_prd_data_list]
+        sim_prd_dict_list = self.model.predict(raw_prd_data_list)
 
-        # Apply function handle
-        exp_cal_list = flatten([handle(fd.get_data_dict()) for fd in fit_data_list])
-        exp_val_list = flatten([handle(pd.get_data_dict()) for pd in prd_data_list])
-        sim_cal_list = flatten([handle(fd) for fd in fit_dict_list])
-        sim_val_list = flatten([handle(pd) for pd in prd_dict_list])
+        # Initialise values lists
+        raw_fit_values_list = []
+        raw_prd_values_list = []
+        sim_fit_values_list = []
+        sim_prd_values_list = []
+
+        # Apply function handle to fitting data
+        for rfd, sfd in zip(raw_fit_dict_list, sim_fit_dict_list):
+            rfv, sfv = handle(rfd, sfd)
+            raw_fit_values_list.append(rfv)
+            sim_fit_values_list.append(sfv)
+
+        # Apply function handle to predicted data
+        for rpd, spd in zip(raw_prd_dict_list, sim_prd_dict_list):
+            rpv, spv = handle(rpd, spd)
+            raw_prd_values_list.append(rpv)
+            sim_prd_values_list.append(spv)
+
+        # Flatten values lists
+        raw_fit_values_list = flatten(raw_fit_values_list)
+        raw_prd_values_list = flatten(raw_prd_values_list)
+        sim_fit_values_list = flatten(sim_fit_values_list)
+        sim_prd_values_list = flatten(sim_prd_values_list)
 
         # Plot and save
-        create_1to1_plot(exp_cal_list, exp_val_list, sim_cal_list, sim_val_list, label, units, limits)
+        create_1to1_plot(raw_fit_values_list, raw_prd_values_list, sim_fit_values_list, sim_prd_values_list, label, units, limits)
         save_plot(plot_path)
 
     def plot_equation(self, equation_path:str) -> None:

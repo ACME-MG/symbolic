@@ -6,7 +6,7 @@
 """
 
 # Libraries
-from symbolic.io.expression import get_params
+from symbolic.regression.expression import get_expression_info
 from pysr import TemplateExpressionSpec
 
 def create_tes(num_inputs:int, submodels:list) -> TemplateExpressionSpec:
@@ -16,44 +16,62 @@ def create_tes(num_inputs:int, submodels:list) -> TemplateExpressionSpec:
     Parameters:
     * `num_inputs`: The number of inputs
     * `submodels`:  List of strings representing submodels;
-                    input variables should be named 'x1', 'x2', etc. 
+                    Input variables should be named 'x0', 'x1', etc.;
+                    Functions should be named 'f0', 'f1', etc.;
+                    Can't use [E, Q, S] as parameters
 
     Returns the template expression specification
     """
     
-    # Define input variables
-    inputs = [f"x{i+1}" for i in range(num_inputs)]
+    # Initialise inputs and functions
+    input_list = [f"x{i}" for i in range(num_inputs)]
+    function_list = ["f"]
 
-    # Extract information from each submodel
+    # Initialise submodel information
     submodel_defs = ""
     num_params_list = []
+
+    # Extract information from each submodel
     for i, submodel in enumerate(submodels):
 
-        # Extract the parameters
-        parameters = get_params(submodel)
+        # Extract the parameters and functions
+        parameters, functions = get_expression_info(submodel)
+        function_handles = [str(f.split("(")[0]) for f in functions if f.startswith("f")]
+        function_list += function_handles
         num_params_list.append(len(parameters))
 
-        # Construct the combine string
-        parameter_def = ", ".join(parameters) + " = " + ", ".join([f"p{i+1}[{j+1}]" for j in range(len(parameters))])
-        expression_def = f"y{i+1} = {submodel}"
+        # Define parameters
+        if parameters == []:
+            parameter_def = ""
+        else:
+            parameter_def = ", ".join(parameters) + " = " + ", ".join([f"p{i}[{j+1}]" for j in range(len(parameters))])
+        
+        # Construct combined string
+        expression_def = f"y{i} = {submodel}"
         submodel_def = f"{parameter_def}\n{expression_def}\n"
         submodel_defs += submodel_def
 
     # Define the parameters dict
     parameters_dict = {}
     for i, num_params in enumerate(num_params_list):
-        parameters_dict[f"p{i+1}"] = num_params
+        if num_params > 0:
+            parameters_dict[f"p{i}"] = num_params
 
     # Create the combined string 
-    combined_str = submodel_defs + "f(" + ", ".join(inputs) + ", "
-    combined_str += ", ".join([f"y{j+1}" for j in range(len(submodels))]) + ")"
+    combined_str = submodel_defs + "f(" + ", ".join(input_list) + ", "
+    combined_str += ", ".join([f"y{j}" for j in range(len(submodels))]) + ")"
 
     # Define the expression specification and return
+    # print(function_list)
+    # print(input_list)
+    # print(parameters_dict)
+    # print(combined_str)
+    # exit()
+    function_list = list(set(function_list))
     expression_spec = TemplateExpressionSpec(
-        expressions    = ["f"],
-        variable_names = inputs,
+        expressions    = function_list,
+        variable_names = input_list,
         parameters     = parameters_dict,
         combine        = combined_str
     )
     return expression_spec
-

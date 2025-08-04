@@ -7,7 +7,7 @@
 
 # Libraries
 import numpy as np
-from symbolic.helper.general import get_spread_list
+from symbolic.helper.general import transpose, get_thinned_list, get_spread_list, normalise
 from symbolic.io.files import csv_to_dict
 from scipy.interpolate import interp1d
 from copy import deepcopy
@@ -110,10 +110,13 @@ class Dataset:
         Returns the size of the lists in the dataset;
         assumes all lists are of the same size
         """
+        size_list = []
         for field in self.data_dict.keys():
             if isinstance(self.data_dict[field], list):
-                return len(self.data_dict[field]) 
-        return 0
+                size_list.append(len(self.data_dict[field])) 
+        if size_list == []:
+            return 0
+        return max(size_list)
 
     def set_weights(self, weights:list) -> None:
         """
@@ -219,3 +222,114 @@ def reintervalise(dataset:Dataset, field:str, bounds:tuple=None, num_points:int=
 
     # Return reintervalised dataset
     return new_dataset
+
+def sparsen_data(data_list:Dataset, new_size:int) -> Dataset:
+    """
+    Sparsens a datset
+
+    Parameters:
+    * `data_list`: List of data objects
+    * `new_size`:  New size for the data
+
+    Returns the sparsened datasets
+    """
+    for data in data_list:
+        data_dict = data.get_data_dict()
+        for field in data_dict.keys():
+            if isinstance(data_dict[field], list):
+                data_dict[field] = get_thinned_list(data_dict[field], new_size)
+        data.set_data_dict(data_dict)
+    return data_list
+
+def posify_data(data_list:Dataset) -> Dataset:
+    """
+    Makes all list values in a dataset > 0
+
+    Parameters:
+    * `data_list`: List of data objects
+    * `new_size`:  New size for the data
+
+    Returns the datasets with negative datapoints removed
+    """
+    for data in data_list:
+        new_data_dict = {}
+        data_dict = data.get_data_dict()
+        for field in data_dict.keys():
+            if isinstance(data_dict[field], list):
+                new_data_dict[field] = [data for data in data_dict[field] if data > 0]
+            else:
+                new_data_dict[field] = data_dict[field]
+        data.set_data_dict(new_data_dict)
+    return data_list
+
+def add_field(data_list:Dataset, add_field) -> Dataset:
+    """
+    Adds a field to a list of data objects
+
+    Parameters:
+    * `data_list`: List of data objects
+    * `add_field`: Function handler to add field;
+                   Function should take in a dictionary and
+                   return a dictionary
+
+    Returns the datasets with newly added fields
+    """
+    for data in data_list:
+        data_dict = data.get_data_dict()
+        data_dict = add_field(data_dict)
+        data.set_data_dict(data_dict)
+    return data_list
+
+def data_to_array(data_list:list, field_list:list) -> np.array:
+    """
+    Converts a list of data objects into a numpy array
+
+    Parameters:
+    * `data_list`:  List of data objects
+    * `field_list`: List of fields
+
+    Returns the data as a numpy array
+    """
+
+    # Prepare data list
+    field_data_list = []
+    
+    # Synthesise the data
+    for data in data_list:
+
+        # Get data
+        data_dict = data.get_data_dict()
+        has_list = True in [isinstance(data_dict[field], list) for field in field_list]
+        if has_list:
+            max_length = max([len(data_dict[field]) for field in field_list if isinstance(data_dict[field], list)])
+        else:
+            max_length = 1
+
+        # Add data
+        field_data_sublist = [data_dict[field] if isinstance(data_dict[field], list) else [data_dict[field]]*max_length for field in field_list]
+        field_data_sublist = transpose(field_data_sublist)
+        field_data_list += field_data_sublist
+
+    # Convert and return
+    field_data_array = np.array(field_data_list)
+    return field_data_array
+
+def normalise_data(data:Dataset, field:str, bounds:tuple=(0,1)) -> Dataset:
+    """
+    Normalises a list in a datset
+
+    Parameters:
+    * `data`:   Data object
+    * `field`:  The field to normalise
+    * `bounds`: The lower and upper bounds as a tuple
+
+    Returns the normalised data
+    """
+    data_dict = data.get_data_dict()
+    if not field in data_dict.keys():
+        raise ValueError(f"The '{field}' field does not exist!")
+    if not isinstance(data_dict[field], list):
+        raise ValueError(f"The '{field}' field does not contain a list of values!")
+    data_dict[field] = normalise(data_dict[field], bounds[0], bounds[1])
+    data.set_data_dict(data_dict)
+    return data

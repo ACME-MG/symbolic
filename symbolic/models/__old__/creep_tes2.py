@@ -1,5 +1,5 @@
 """
- Title:         Basic creep model
+ Title:         Basic creep model with submodels
  Description:   Performs the symbolic regression
  Author:        Janzen Choi
 
@@ -7,8 +7,9 @@
 
 # Libraries
 from symbolic.models.__model__ import __Model__
-from symbolic.regression.expression import replace_variables, equate_to
-from symbolic.io.dataset import data_to_array, sparsen_data, posify_data
+from symbolic.io.dataset import data_to_array, sparsen_data, posify_data, add_field
+from symbolic.regression.expression import replace_variables, equate_to, submodel_to_latex
+from symbolic.regression.submodel import create_tes
 import numpy as np
 from pysr import PySRRegressor
 from copy import deepcopy
@@ -22,29 +23,53 @@ class Model(__Model__):
         """
 
         # Define regressor for time-to-failure
+        # x1 = stress
+        # x2 = temperature
+        # x3 = strain
+        # self.ttf_submodels = [
+        #     "exp(P/x2-C)", # Larson-Miller
+        # ]
         self.ttf_reg = PySRRegressor(
             populations      = 32,
             population_size  = 32,
-            maxsize          = 32,
+            maxsize          = 16,
             niterations      = 64,
-            binary_operators = ["*", "^", "/"],
-            constraints      = {"^": (-1, 1)},
-            elementwise_loss = "loss(prediction, target) = (prediction - target)^2",
+            binary_operators = ["+", "*", "/"],
+            elementwise_loss = "loss(p, t) = abs(p - t)",
             output_directory = self.output_path,
         )
 
         # Define regressor for strain
+        # x0 = time
+        # x1 = stress
+        # x2 = temperature
+        self.strain_ni = 3 # number of inputs
+        self.strain_submodels = [
+            # "x0^n",
+            # "x1^m",
+            # "exp(k*x0)",
+            # "exp(-k/x2)",
+            # "log(k*x0+1)"
+            # "x0^f0(x1,x2)",
+            # "x1^f1(x2)",
+            # "exp(k*x0)",
+            # "exp(-k/x2)",
+            # "log(x0*f2(x1,x2)+1)"
+        ]
+        strain_tes = create_tes(self.strain_ni, self.strain_submodels)
         self.strain_reg = PySRRegressor(
+            expression_spec  = strain_tes,
             populations      = 32,
             population_size  = 32,
             maxsize          = 32,
             niterations      = 256,
-            binary_operators = ["+", "*", "^", "/"],
-            constraints      = {"^": (-1, 1)},
-            unary_operators  = ["log", "exp"],
-            elementwise_loss = "loss(prediction, target, weight) = weight*(prediction - target)^2",
+            complexity_of_variables = 3,
+            binary_operators = ["+", "*", "/"],
+            elementwise_loss = "loss(p, t, w) = w*abs(p-t)",
             output_directory = self.output_path,
         )
+
+        # Define fields
         self.set_fields(["time", "stress", "temperature", "strain"])
 
     def fit(self, data_list:list) -> None:
@@ -116,16 +141,15 @@ class Model(__Model__):
         """
 
         # Get time-to-failure latex equation
-        ttf_reg_ls = self.ttf_reg.latex()
-        variable_map = {"x0": r'\sigma', "x1": r'T'}
-        ttf_reg_ls = replace_variables(ttf_reg_ls, variable_map)
-        ttf_reg_ls = equate_to(r't_f', ttf_reg_ls)
+        ttf_expression = self.ttf_reg.latex()
+        ttf_expression = replace_variables(ttf_expression, [r'\sigma', r'T'])
+        ttf_expression = equate_to(r't_f', ttf_expression)
 
         # Get strain latex equation
-        strain_reg_ls = self.strain_reg.latex()
-        variable_map = {"x0": r't', "x1": r'\sigma', "x2": r'T'}
-        strain_reg_ls = replace_variables(strain_reg_ls, variable_map)
-        strain_reg_ls = equate_to(r'\epsilon', strain_reg_ls)
-        
+        strain_julia = self.strain_reg.get_best()["julia_expression"]
+        strain_expression = submodel_to_latex(strain_julia, self.strain_ni, self.strain_submodels)
+        strain_expression = replace_variables(strain_expression, [r't', r'\sigma', r'T'])
+        strain_expression = equate_to(r'\varepsilon', strain_expression)
+
         # Combine and return
-        return [ttf_reg_ls, strain_reg_ls]
+        return [ttf_expression, strain_expression]

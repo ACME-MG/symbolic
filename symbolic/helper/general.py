@@ -10,6 +10,22 @@
 import math, os, sys
 import numpy as np
 
+def normalise(value_list:list, min_norm:float=0.0, max_norm:list=1.0) -> list:
+    """
+    Normalises a list of values
+
+    Parameters:
+    * `value_list`: The list of values
+    * `min_norm`:   The minimum value for the normalised list of values
+    * `max_norm`:   The maximum value for the normalised list of values
+
+    Returns the normalised list
+    """
+    min_value = min(value_list)
+    max_value = max(value_list)
+    normalised = [min_norm+((value-min_value)/(max_value-min_value))*(max_norm-min_norm) for value in value_list]
+    return normalised
+
 def get_spread_list(size:int, limit:int) -> list:
     """
     Calculates a list of values of between 0 and a limit,
