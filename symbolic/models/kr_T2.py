@@ -1,5 +1,5 @@
 """
- Title:         Custom creep model
+ Title:         Kachanov-Rabotnov model with functions instead of parameters
  Description:   Performs the symbolic regression
  Author:        Janzen Choi
 
@@ -12,6 +12,7 @@ from symbolic.io.dataset import data_to_array, sparsen_data, add_field, bind_dat
 from symbolic.io.files import dict_to_csv
 from symbolic.regression.expression import replace_variables, julia_to_expression, expression_to_latex
 from symbolic.regression.expression import evaluate_expression, round_expression
+from symbolic.helper.derivative import differentiate_curve
 import numpy as np
 from copy import deepcopy
 from pysr import PySRRegressor, TemplateExpressionSpec
@@ -30,40 +31,48 @@ class Model(__Model__):
         # x2 = temperature
         # y0 = strain
         # y1 = time-to-failure (ttf)
-        # ef_valid = [x0x < z1.x[1] ? efx : e1x/2 for (x0x, efx, e1x) in zip(x0.x, ef.x, e1.x)];
-        # ValidVector(ef_valid, ef.valid)
+        # y2 = strain-to-failure (stf)
+        # y3 = minimum creep rate (mcr)
         self.kr_combine = """
-            A = 10^p[1]; n = 0.33333; B = 10^p[2]; m = abs(p[3]); Q = abs(p[4]); R = 8.3145;
-            z0 = A*x0^n + B*x1^m*exp(-Q/R/x2)*x0 + f0(x0,x1,x2);
-            z1 = f1(x1,x2);
-            z2 = A*z1^n + B*x1^m*exp(-Q/R/x2)*z1 + f0(z1,x1,x2);
+            A = 10^(-0.00015546*x2^2 + 0.31652*x2 - 168.61);
+            n = 7.3325e-05*x2^2 - 0.14455*x2 + 75.677;
+            M = 10^(-0.0002102*x2^2 + 0.4144*x2 - 212.98);
+            phi = -0.00012952*x2^2 + 0.19913*x2 - 61.658;
+            chi = 0.00011*x2^2 - 0.21009*x2 + 103.81;
+            z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1)) + f0(x0,x1,x2);
+            z1 = 1/((phi+1)*M*x1^chi) + f1(x1,x2);
+            z2 = A*x1^n / (M*x1^chi*(phi+1-n)) + f0(x0,x1,x2);
+            z3 = A*x1^n;
             e0 = abs((y0-z0)/y0);
             e1 = abs((y1-z1)/y1);
             e2 = abs((y2-z2)/y2);
-            ef = (e0 + e1 + e2)/3;
-            ef
+            e3 = abs((y3-z3)/y3);
+            ef = (e0 + e1 + e2 + e3)/4;
+            ttf = 1/((phi+1)*M*x1^chi);
+            ef_valid = [x0x < ttf.x[1] ? efx : one(efx) for (x0x, efx) in zip(x0.x, ef.x)];
+            ValidVector(ef_valid, ef.valid)
         """
 
         # Define regressor for strain/ttf predictions
         kr_spec = TemplateExpressionSpec(
             expressions    = ["f0", "f1"],
-            variable_names = ["x0", "x1", "x2", "y0", "y1", "y2"],
-            parameters     = {"p": 4},
+            variable_names = ["x0", "x1", "x2", "y0", "y1", "y2", "y3"],
             combine        = self.kr_combine
         )
         self.kr_reg = PySRRegressor(
             expression_spec  = kr_spec,
             populations      = 32,
             population_size  = 32,
-            maxsize          = 32,
+            maxsize          = 16,
             niterations      = 128,
             precision        = 64,
             verbosity        = 1,
-            # binary_operators = ["+", "*", "/"],
-            # unary_operators  = ["log"],
-            binary_operators = ["+", "*", "^", "/"],
-            constraints      = {"^": (-1, 1)},
-            unary_operators  = ["log", "exp"],
+            binary_operators = ["+", "*", "/"],
+            unary_operators  = ["log"],
+            # complexity_of_variables = 2,
+            # binary_operators = ["+", "*", "^", "/"],
+            # constraints      = {"^": (-1, 1)},
+            # unary_operators  = ["log", "exp"],
             elementwise_loss = "take_first(p, t, w) = p",
             output_directory = self.output_path,
         )
@@ -73,6 +82,7 @@ class Model(__Model__):
         self.kr_julia = None
         self.add_ttf = lambda dd : dd.update({"ttf": [max(dd["time"])]*len(dd["time"])}) or dd # returns dd
         self.add_stf = lambda dd : dd.update({"stf": [max(dd["strain"])]*len(dd["strain"])}) or dd # returns dd
+        self.add_mcr = lambda dd : dd.update({"mcr": [min(differentiate_curve(dd, "time", "strain")["strain"])]*len(dd["strain"])}) or dd # returns dd
 
     def fit(self, data_list:list) -> None:
         """
@@ -82,11 +92,11 @@ class Model(__Model__):
         * `data_list`: List of dictionaries containing data
         """
 
-        # Process the data
-        data_list = self.process_data_list(data_list)
+        # Process data
+        data_list = self.process_data_list(data_list, np.inf)
 
         # Fit the regression model
-        input_data = data_to_array(data_list, ["time", "stress", "temperature", "strain", "ttf", "stf"])
+        input_data = data_to_array(data_list, ["time", "stress", "temperature", "strain", "ttf", "stf", "mcr"])
         output_data = np.zeros(len(input_data))
         weights = self.get_fit_weights(data_list)
         self.kr_reg.fit(input_data, output_data, weights=weights)
@@ -121,7 +131,7 @@ class Model(__Model__):
             num_data = 100
             time_list = np.linspace(0.1, ttf, num_data).tolist()
             input_dict = {"x0": time_list, "x1": num_data*[stress], "x2": num_data*[temperature]}
-            strain_list = evaluate_expression(self.kr_expression, "z0", input_dict, 0.0)
+            strain_list = evaluate_expression(self.kr_expression, "z0", input_dict)
 
             # Combine and append
             prd_dict = {"time": [0]+time_list, "strain": [0]+strain_list}
@@ -149,11 +159,12 @@ class Model(__Model__):
             "z0": r'\varepsilon',
             "z1": r't_{f}',
             "z2": r'\varepsilon_{f}',
+            "z3": r'\dot{\varepsilon}_{min}',
         }
         latex_dict = replace_variables(latex_dict, variable_map)
         
         # Identify expressions and return
-        latex_expressions = [latex_dict[p] for p in ["z0", "z1", "z2", "A", "n", "B", "m", "Q"]]
+        latex_expressions = [latex_dict[p] for p in ["z0", "z1", "z2", "z3", "A", "n", "M", "phi", "chi"]]
         return latex_expressions
 
     def process_data_list(self, data_list:list, time_upper:float=np.inf) -> None:
@@ -170,6 +181,7 @@ class Model(__Model__):
         data_list = bind_data(data_list, "time", (1.0, time_upper))
         data_list = add_field(data_list, self.add_ttf)
         data_list = add_field(data_list, self.add_stf)
+        data_list = add_field(data_list, self.add_mcr)
         data_list = sparsen_data(data_list, 32)
         return data_list
 
@@ -207,7 +219,7 @@ class Model(__Model__):
             data_list[i] = self.process_data_list([data_list[i]], time_upper=max_time)[0]
 
         # Define the errors
-        error_names = ["e0", "e1", "ef"]
+        error_names = ["e0", "e1", "e2", "e3", "ef"]
         error_dict = {"dataset": ["fitting", "predicting"]}
         for error_key in error_names:
             error_dict[error_key] = [[], []]
@@ -228,6 +240,7 @@ class Model(__Model__):
                 "y0": data_dict["strain"],
                 "y1": data_dict["ttf"],
                 "y2": data_dict["stf"],
+                "y3": data_dict["mcr"],
             }
 
             # Evaluate for errors

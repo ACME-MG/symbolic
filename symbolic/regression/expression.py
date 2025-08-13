@@ -11,7 +11,6 @@ from symbolic.helper.plotter import save_plot
 from copy import deepcopy
 import matplotlib.pyplot as plt, re
 from sympy import sympify, latex
-from sympy import Number
 from sympy.parsing.sympy_parser import parse_expr
 
 def replace_variables(latex_string:str, variable_map:dict) -> str:
@@ -47,7 +46,10 @@ def parse_latex(latex_str:str):
 
     Returns the LaTeX object
     """
-    expression = parse_expr(latex_str, evaluate=False)
+    try:
+        expression = parse_expr(latex_str, evaluate=False)
+    except:
+        return None
     latex_object = latex(expression, mul_symbol=' ')
     return latex_object
 
@@ -101,7 +103,10 @@ def get_variables(expression:str) -> list:
     Returns a list of variables
     """
     expression = process_str(expression)
-    expression = sympify(expression)
+    try:
+        expression = sympify(expression)
+    except:
+        return []
     variables = list(expression.free_symbols)
     return variables
 
@@ -115,7 +120,10 @@ def get_functions(expression:str) -> list:
     Returns a list of functions
     """
     expression = process_str(expression)
-    expression = sympify(expression)
+    try:
+        expression = sympify(expression)
+    except:
+        return []
     functions = expression.find(lambda n: getattr(n, "is_Function", False))
     functions = [process_str(str(f)) for f in functions]
     return functions
@@ -298,11 +306,33 @@ def expression_to_latex(expression_dict:dict) -> dict:
     expression_dict = deepcopy(expression_dict)
     for field in expression_dict.keys():
         expression = expression_dict[field]
-        expression_dict[field] = parse_latex(expression)
+        latex_expression = parse_latex(expression)
+        expression_dict[field] = latex_expression
     expression_dict = equate_to_dict(expression_dict)
     return expression_dict
 
-def evaluate_expression(expression_dict:dict, target_field:str, input_dict:dict) -> float:
+def replace_expression(expression:str, expression_dict:dict) -> float:
+    """
+    Replaces variables inside an expression
+
+    Parameters:
+    * `expression`:      The expression to undergo replacements
+    * `expression_dict`: Dictionary of expressions
+    
+    The expression with replaced variables
+    """
+    in_expression = False
+    for expression_key in expression_dict:
+        if expression_key in expression:
+            sub_expression = f"({expression_dict[expression_key]})"
+            expression = expression.replace(expression_key, sub_expression)
+            in_expression = True
+    if in_expression:
+        expression = replace_expression(expression, expression_dict)
+    return expression
+
+def evaluate_expression(expression_dict:dict, target_field:str,
+                        input_dict:dict, ignore_error:bool=False) -> float:
     """
     Evaluates an expression
 
@@ -310,14 +340,17 @@ def evaluate_expression(expression_dict:dict, target_field:str, input_dict:dict)
     * `expression_dict`: Dictionary of expressions
     * `target_field`:    The field of the expression to be evaluated
     * `input_dict`:      Dictionary of input values (lists)
+    * `ignore_error`:    Whether to ignore errors in the eval;
+                         If defined as a float, it replaces the evaluated
+                         value with the float
     
     The result of the evaluation
     """
 
     # Get expression
     target_expression = expression_dict[target_field]
-    for expression_key in expression_dict:
-        target_expression = target_expression.replace(expression_key, expression_dict[expression_key])
+    target_expression = process_str(target_expression)
+    target_expression = replace_expression(target_expression, expression_dict)
     
     # Evaluate the expression
     eval_values = []
@@ -327,13 +360,19 @@ def evaluate_expression(expression_dict:dict, target_field:str, input_dict:dict)
         # Insert input variables
         eval_expression = target_expression
         for input_key in input_dict:
-            input_value = str(input_dict[input_key][i])
+            input_value = f"({input_dict[input_key][i]})"
             eval_expression = eval_expression.replace(input_key, input_value)
 
         # Evaluate
         from math import exp, log, cos, cosh, sin, sinh, tan, tanh
-        eval_value = eval(eval_expression)
-        eval_values.append(eval_value)
+        try:
+            eval_value = eval(eval_expression)
+            eval_values.append(eval_value)
+        except ValueError as error:
+            if isinstance(ignore_error, bool) and not ignore_error:
+                raise error
+            elif isinstance(ignore_error, float):
+                eval_values.append(ignore_error)
     
     # Return evaluated values
     return eval_values

@@ -20,49 +20,59 @@ def main():
     """
 
     # Initialise
-    itf = Interface("kr_T")
-    itf.define_model("kr_T")
+    itf = Interface("custom")
+    itf.define_model("custom")
 
-    # Add fitting data
+    # 800C
     itf.add_data("creep/inl_1/AirBase_800_70_G44.csv", fitting=True)
-    itf.add_data("creep/inl_1/AirBase_800_80_G25.csv", fitting=True)
-    itf.add_data("creep/inl_1/AirBase_900_31_G50.csv", fitting=True)
-    itf.add_data("creep/inl_1/AirBase_900_36_G22.csv", fitting=True)
-    itf.add_data("creep/inl_1/AirBase_1000_13_G30.csv", fitting=True)
-    itf.remove_oxidation(0.1, 0.7)
-    itf.add_data("creep/inl_1/AirBase_1000_16_G18.csv", fitting=True)
-    itf.remove_oxidation()
+    # itf.add_data("creep/inl_1/AirBase_800_80_G25.csv", fitting=True)
+    # itf.add_data("creep/inl_1/AirBase_800_60_G32.csv", fitting=ALL_CAL)
+    # itf.add_data("creep/inl_1/AirBase_800_65_G33.csv", fitting=ALL_CAL)
 
-    # # Add validation data
-    itf.add_data("creep/inl_1/AirBase_800_60_G32.csv", fitting=ALL_CAL)
-    itf.add_data("creep/inl_1/AirBase_800_65_G33.csv", fitting=ALL_CAL)
-    itf.add_data("creep/inl_1/AirBase_900_26_G59.csv", fitting=ALL_CAL)
-    itf.remove_oxidation()
-    itf.add_data("creep/inl_1/AirBase_900_28_G45.csv", fitting=ALL_CAL)
-    itf.add_data("creep/inl_1/AirBase_1000_11_G39.csv", fitting=ALL_CAL)
-    itf.remove_oxidation(0.1, 0.7)
-    itf.add_data("creep/inl_1/AirBase_1000_12_G48.csv", fitting=ALL_CAL)
-    itf.remove_oxidation()
+    # # 900C
+    # itf.add_data("creep/inl_1/AirBase_900_31_G50.csv", fitting=True)
+    # itf.add_data("creep/inl_1/AirBase_900_36_G22.csv", fitting=True)
+    # itf.add_data("creep/inl_1/AirBase_900_26_G59.csv", fitting=ALL_CAL)
+    # itf.remove_oxidation()
+    # itf.add_data("creep/inl_1/AirBase_900_28_G45.csv", fitting=ALL_CAL)
+    
+    # # !000C
+    # itf.add_data("creep/inl_1/AirBase_1000_13_G30.csv", fitting=True)
+    # itf.remove_oxidation(0.1, 0.7)
+    # itf.add_data("creep/inl_1/AirBase_1000_16_G18.csv", fitting=True)
+    # itf.remove_oxidation()
+    # itf.add_data("creep/inl_1/AirBase_1000_11_G39.csv", fitting=ALL_CAL)
+    # itf.remove_oxidation(0.1, 0.7)
+    # itf.add_data("creep/inl_1/AirBase_1000_12_G48.csv", fitting=ALL_CAL)
+    # itf.remove_oxidation()
 
-    # Fit the data
-    time_h = lambda dd : dd.update({"time": [round(t/3600, 1) for t in dd["time"]]}) or dd
-    itf.change_field(time_h)
+    # Prepare the data
+    # time_h = lambda dd : dd.update({"time": [round(t/3600, 1) for t in dd["time"]]}) or dd
+    # itf.change_field(time_h)
     # time_n = lambda dd : dd.update({"time": [round(t/10000/3600, 1) for t in dd["time"]]}) or dd
     # itf.change_field(time_n)
-    stress_n = lambda dd : dd.update({"stress": dd["stress"]/80}) or dd
-    itf.change_field(stress_n)
+    # stress_n = lambda dd : dd.update({"stress": dd["stress"]/80}) or dd
+    # itf.change_field(stress_n)
     # strain_p = lambda dd : dd.update({"strain": [s*100 for s in dd["strain"]]}) or dd
     # itf.change_field(strain_p)
+
+    # Fit the model
     itf.fit_model()
+
+    # Run model-specific functions
+    # itf.run_model_function("set_julia", julia="f0 = 0; f1 = 0")
+    # itf.run_model_function("set_julia", julia="f0 = log(#2) * (((((#1 + #3) / ((#3 * #2) * #2)) ^ 1.4776893550074655) * (-68.05796486172522 + #2)) / #2); f1 = (#1 * (#2 / ((#1 / #2) + -0.07971549275158935))) / 0.7217399144268667")
+    itf.run_model_function("export_errors", data_list=itf.__controller__.get_data_list())
 
     # Save the results
     for temperature in [800, 900, 1000]:
         itf.plot_fit(
             x_field    = "time",
             y_field    = "strain",
-            # x_scale    = 1/3600,
+            x_scale    = 1/3600,
             x_units    = "h",
             y_units    = "mm/mm",
+            # y_units    = "%",
             y_limits   = (0, 1.0),
             file_name  = f"plot_fit_{temperature}",
             conditions = {"temperature": temperature},

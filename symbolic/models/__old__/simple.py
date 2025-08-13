@@ -1,5 +1,5 @@
 """
- Title:         Kachanov-Rabotnov model with functions instead of parameters
+ Title:         Simple creep model
  Description:   Performs the symbolic regression
  Author:        Janzen Choi
 
@@ -9,7 +9,7 @@
 from symbolic.models.__model__ import __Model__
 from symbolic.io.dataset import data_to_array, sparsen_data, posify_data, add_field
 from symbolic.regression.expression import replace_variables, julia_to_expression, expression_to_latex
-from symbolic.regression.expression import evaluate_expression, set_parameters, round_expression
+from symbolic.regression.expression import evaluate_expression, round_expression
 import numpy as np
 from pysr import PySRRegressor, TemplateExpressionSpec
 
@@ -27,43 +27,32 @@ class Model(__Model__):
         # x2 = temperature
         # y0 = strain
         # y1 = time-to-failure (ttf)
-        # y2 = strain-to-failure (stf)
         self.kr_combine = """
-            A = 10^fA(x2); n = abs(fn(x2)); M = 10^fM(x2); phi = abs(fphi(x2)); chi = abs(fchi(x2));
-            z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1)) + f0(x0,x1,x2);
-            z1 = 1/((phi+1)*M*x1^chi) + f1(x1,x2);
-            z2 = A*x1^n / (M*x1^chi*(phi+1-n)) + f0(x0,x1,x2);
-            5*((y0-z0)/y0)^2 + ((y1-z1)/y1)^2 + ((y2-z2)/y2)^2
+            A = 10^fA(x1,x2); n = 0.3333; B = 10^fB(x1,x2); k = abs(fk(x1,x2));
+            z0 = A*x0^n + B*exp(k*x0) + f0(x0,x1,x2);
+            z1 = f1(x1,x2);
+            ((y0-z0)/y0)^2 + ((y1-z1)/y1)^2
         """
-
-        # # Set parameters in combine string
-        # parameter_values = [6.37573E-17, 7.643720763, 2.32596E-16, 17.01786425, 5.9171705]
-        # parameter_values = [6.30829E-10, 4.669437839, 4.37248E-13, 16.37431465, 5.116070008]
-        # parameter_map = dict(zip([f"p[{i+1}]" for i in range(len(parameter_values))], parameter_values))
-        # self.kr_combine = set_parameters(self.kr_combine, parameter_map)
 
         # Define regressor for strain/ttf predictions
         kr_spec = TemplateExpressionSpec(
-            expressions    = ["f0", "f1", "fA", "fn", "fM", "fphi", "fchi"],
-            variable_names = ["x0", "x1", "x2", "y0", "y1", "y2"],
+            expressions    = ["f0", "f1", "fA", "fB", "fk"],
+            variable_names = ["x0", "x1", "x2", "y0", "y1"],
             # parameters     = {"p": 5},
             combine        = self.kr_combine
         )
         self.kr_reg = PySRRegressor(
             expression_spec  = kr_spec,
-            populations      = 64,
-            population_size  = 64,
-            maxsize          = 16,
+            populations      = 32,
+            population_size  = 32,
+            maxsize          = 32,
             niterations      = 64,
             precision        = 64,
-            verbosity        = 0,
-            binary_operators = ["+", "*", "/"],
-            unary_operators  = ["log"],
             # complexity_of_variables = 2,
-            # binary_operators = ["+", "*", "^", "/"],
-            # constraints      = {"^": (-1, 1)},
-            # unary_operators  = ["log", "exp"],
-            elementwise_loss = "take_first(p, t, w) = w*p",
+            binary_operators = ["+", "*", "^", "/"],
+            constraints      = {"^": (-1, 1)},
+            unary_operators  = ["log", "exp"],
+            elementwise_loss = "take_first(p, t, w) = p",
             output_directory = self.output_path,
         )
 
@@ -71,7 +60,6 @@ class Model(__Model__):
         self.set_fields(["time", "stress", "temperature", "strain"])
         self.kr_julia = None
         self.add_ttf = lambda dd : dd.update({"ttf": [max(dd["time"])]*len(dd["time"])}) or dd # returns dd
-        self.add_stf = lambda dd : dd.update({"stf": [max(dd["strain"])]*len(dd["strain"])}) or dd # returns dd
 
     def fit(self, data_list:list) -> None:
         """
@@ -83,12 +71,11 @@ class Model(__Model__):
 
         # Process data
         data_list = posify_data(data_list)
-        data_list = sparsen_data(data_list, 32)
+        data_list = sparsen_data(data_list, 100)
         data_list = add_field(data_list, self.add_ttf)
-        data_list = add_field(data_list, self.add_stf)
 
         # Fit the regression model
-        input_data = data_to_array(data_list, ["time", "stress", "temperature", "strain", "ttf", "stf"])
+        input_data = data_to_array(data_list, ["time", "stress", "temperature", "strain", "ttf"])
         output_data = np.zeros(len(input_data))
         weights = self.get_fit_weights(data_list)
         self.kr_reg.fit(input_data, output_data, weights=weights)
@@ -149,11 +136,10 @@ class Model(__Model__):
             "x1": r'\sigma',
             "x2": r'T',
             "z0": r'\varepsilon',
-            "z1": r't_{f}',
-            "z2": r'\varepsilon_{f}',
+            "z1": r't_{f}'
         }
         latex_dict = replace_variables(latex_dict, variable_map)
         
         # Identify expressions and return
-        latex_expressions = [latex_dict[p] for p in ["z0", "z1", "z2", "A", "n", "M", "phi", "chi"]]
+        latex_expressions = [latex_dict[p] for p in ["z0", "z1", "A", "n", "B", "k"]]
         return latex_expressions

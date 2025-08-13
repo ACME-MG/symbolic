@@ -13,6 +13,7 @@ from symbolic.helper.plotter import prep_plot, set_limits, add_legend, save_plot
 from symbolic.regression.expression import save_latex
 from symbolic.helper.plotter import EXP_COLOUR, CAL_COLOUR, VAL_COLOUR
 from symbolic.models.__model__ import get_model
+from copy import deepcopy
 
 # Controller class
 class Controller:
@@ -282,7 +283,9 @@ class Controller:
         Returns the list of dictionaries of datasets
         """
         data_list = self.get_data_list(conditions)
-        return [data for data in data_list if data.is_fitting()]
+        data_list = [data for data in data_list if data.is_fitting()]
+        data_list = deepcopy(data_list)
+        return data_list
 
     def get_prd_data_list(self, conditions:dict={}) -> list:
         """
@@ -294,7 +297,9 @@ class Controller:
         Returns the list of dictionaries of datasets
         """
         data_list = self.get_data_list(conditions)
-        return [data for data in data_list if not data.is_fitting()]
+        data_list = [data for data in data_list if not data.is_fitting()]
+        data_list = deepcopy(data_list)
+        return data_list
 
     def get_num_data(self) -> int:
         """

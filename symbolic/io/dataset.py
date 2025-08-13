@@ -262,6 +262,31 @@ def posify_data(data_list:Dataset) -> Dataset:
         data.set_data_dict(new_data_dict)
     return data_list
 
+def bind_data(data_list:Dataset, field:str, bounds:tuple) -> Dataset:
+    """
+    Binds data in a field
+
+    Parameters:
+    * `data_list`: List of data objects
+    * `field`:     Field to bind
+    * `bounds`:    Lower and upper bounds
+
+    Returns the datasets with bounded datapoints
+    """
+    for data in data_list:
+        new_data_dict = {}
+        data_dict = data.get_data_dict()
+        if not field in data_dict.keys():
+            raise ValueError(f"The '{field}' field does not exist in the data!")
+        index_list = [i for i in range(len(data_dict[field])) if data_dict[field][i]>=bounds[0] and data_dict[field][i]<=bounds[1]]
+        for key in data_dict.keys():
+            if isinstance(data_dict[key], list):
+                new_data_dict[key] = [data_dict[key][i] for i in index_list]
+            else:
+                new_data_dict[key] = data_dict[key]
+        data.set_data_dict(new_data_dict)
+    return data_list
+
 def add_field(data_list:Dataset, add_field) -> Dataset:
     """
     Adds a field to a list of data objects

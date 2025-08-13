@@ -1,16 +1,42 @@
 from pysr import PySRRegressor, TemplateExpressionSpec
 import numpy as np
 
+# combine_str = """
+#     A = 6.3757e-19; n = 7.643720763; M = 6.461e-20; phi = 17.01786425; chi = 5.9171705;
+#     z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1)) + f0(x0,x1,x2);
+#     z1 = 1/((phi+1)*M*x1^chi) + f1(x1,x2);
+#     (y0-z0)^2+(y1-z1)^2;
+# """
+# """
+#     ((; f0, f1), (x0, x1, x2, y0, y1)) -> begin
+#         A = 6.3757e-19
+#         n = 7.643720763
+#         M = 6.461e-20
+#         phi = 17.01786425
+#         chi = 5.9171705
+#         z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1)) + f0(x0, x1, x2)
+#         z1 = 1/((phi+1)*M*x1^chi) + f1(x1, x2)
+#         e0 = (y0-z0)^2+(y1-z1)^2
+#         e0_valid = [e0x.valid ? e0x : 0 for e0x in e0.x]
+#         ValidVector(e0_valid, e0.valid)
+#     end
+# """
+
 expression_spec = TemplateExpressionSpec(
-    expressions    = ["f0", "f1"],
-    variable_names = ["x0", "x1", "x2", "y0", "y1"],
+    function_symbols = ["f0", "f1"],
+    # variable_names = ["x0", "x1", "x2", "y0", "y1"],
     combine        = """
-        A = 6.3757e-19; n = 7.643720763; M = 6.461e-20; phi = 17.01786425; chi = 5.9171705;
-        z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1)) + f0(x0,x1,x2);
-        z1 = 1/((phi+1)*M*x1^chi) + f1(x1,x2);
-        (y0-z0)^2+(y1-z1)^2
+        ((; f0, f1), (x0, x1, x2, y0, y1)) -> begin
+            A = 6.3757e-19; n = 7.643720763; M = 6.461e-20; phi = 17.01786425; chi = 5.9171705;
+            z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1)) + f0(x0, x1, x2);
+            z1 = 1/((phi+1)*M*x1^chi) + f1(x1, x2);
+            e0 = (y0-z0)^2+(y1-z1)^2;
+            e0_valid = [x0x < z1.x[1] ? e0x : zero(e0x) for (x0x, e0x) in zip(x0.x, e0.x)];
+            ValidVector(e0_valid, e0.valid)
+        end
     """
 )
+
 regressor = PySRRegressor(
     expression_spec  = expression_spec,
     populations      = 32,

@@ -218,6 +218,25 @@ class Interface:
         self.__print__(f"Fitting the model against {num_fit_data}/{num_data} datasets ({total_size} points)")
         self.__controller__.fit_model()
 
+    def run_model_function(self, function_name:str, *args, **kwargs) -> None:
+        """
+        Runs a function / method defined in the model
+
+        Parameters:
+        * `function_name`: The function to be run
+        
+        Returns whatever the output of the function / method is
+        """
+        self.__print__(f"Running the '{function_name}' function")
+        self.__check_model__()
+        model = self.__controller__.model
+        if not hasattr(model, function_name):
+            raise AttributeError(f"The '{function_name}' function is not defined in the '{model.get_name()}' model!")
+        method = getattr(model, function_name)
+        if not callable(method):
+            raise TypeError(f"The '{function_name}' function is not callable from by the '{model.get_name()}' model!")
+        return method(*args, **kwargs)
+
     def plot_fit(self, x_field:str, y_field:str, x_units:str="", x_scale:float=1.0,
                  y_scale:float=1.0, y_units:str="", x_limits:tuple=None,
                  y_limits:tuple=None, file_name:str="", conditions:dict={}) -> None:
@@ -271,3 +290,10 @@ class Interface:
         file_name = file_name if file_name != "" else "equation"
         equation_path = get_file_path_exists(self.__get_output__(file_name), "png")
         self.__controller__.plot_equation(equation_path)
+
+    def __check_model__(self) -> None:
+        """
+        Checks that the model has been defined
+        """
+        if self.__controller__.model == None:
+            raise ValueError("The model has not been defined yet!")

@@ -3,35 +3,57 @@ import numpy as np
 from symbolic.regression.expression import save_latex, replace_variables, julia_to_expression, expression_to_latex
 from symbolic.regression.expression import round_expression, set_parameters, evaluate_expression
 
-julia = "f1 = #2 * 12376.228496393594; p = [12464.824043183033, 1.9615939337418535, -12464.824101263024, 0.8152816667838239, -3.3670639500886685e-8]"
-combine_str = """
-    A = 10^fA(x1,x2); n = abs(fn(x1,x2)); M = 10^fM(x1,x2); phi = abs(fphi(x1,x2)); chi = abs(fchi(x1,x2));
-    z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1)) + f0(x0,x1,x2);
-    z1 = 1/((phi+1)*M*x1^chi) + f1(x1,x2);
-    z2 = A*x1^n / (M*x1^chi*(phi+1-n)) + f0(x0,x1,x2);
-    e0 = ((y0-z0)/y0)*100;
-    e1 = ((y1-z1)/y1)*100;
-    e2 = ((y2-z2)/y2)*100;
-    e0^2 + e1^2 + e2^2
-"""
 
-# parameter_values = [6.37573E-17, 7.643720763, 2.32596E-16, 17.01786425, 5.9171705]
-# parameter_map = dict(zip([f"p[{i+1}]" for i in range(len(parameter_values))], parameter_values))
-# combine_str = set_parameters(combine_str, parameter_map)
-expression_dict = julia_to_expression(julia, combine_str)
+combine_str = """
+    A = 10^(-0.00015546*x2^2 + 0.31652*x2 - 168.61);
+    n = 7.3325e-05*x2^2 - 0.14455*x2 + 75.677;
+    M = 10^(-0.0002102*x2^2 + 0.4144*x2 - 212.98);
+    phi = -0.00012952*x2^2 + 0.19913*x2 - 61.658;
+    chi = 0.00011*x2^2 - 0.21009*x2 + 103.81;
+    z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1));
+    z1 = 1/((phi+1)*M*x1^chi);
+    z2 = A*x1^n / (M*x1^chi*(phi+1-n));
+    z3 = A*x1^n;
+    ((y0-z0)/y0)^2 + ((y1-z1)/y1)^2 + ((y2-z2)/y2)^2 + ((y3-z3)/y3)^2
+"""
+expression_dict = julia_to_expression("f0 = 0; f1 = 0", combine_str)
+data_dict = {'time': [0.0, 52.1, 111.8, 177.3, 243.6, 311.4, 379.3, 449.2, 518.3, 589.8, 660.8, 738.4, 813.7, 885.8, 960.2, 1034.1, 1103.8, 1174.0, 1242.8, 1314.4, 1385.7, 1453.9, 1522.6, 1589.2, 1661.5, 1733.6, 1802.5, 1868.9, 1939.7, 2005.5, 2073.2, 2200.4], 'stress': 70.0, 'temperature': 800.0, 'strain': [0.0, 0.9844, 1.926, 2.8628, 3.7274000000000003, 4.5446, 5.3162, 6.0755, 6.8008, 7.522900000000001, 8.2235, 8.9724, 9.6802, 10.3494, 11.0342, 11.7056, 12.3371, 12.973, 13.603099999999998, 14.2618, 14.926899999999998, 15.5705, 16.2295, 16.8764, 17.6017, 18.3434, 19.083, 19.8175, 20.631, 21.4281, 22.2984, 24.0716], 'ttf': [2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4, 2200.4], 'stf': [24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716, 24.0716], 'mcr': [0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299, 0.009046580792332299]}
+input_dict = {
+    "x0": data_dict["time"],
+    "x1": [data_dict["stress"]]*len(data_dict["time"]),
+    "x2": [data_dict["temperature"]]*len(data_dict["time"])
+}
+
+# julia = "f1 = #2 * 12376.228496393594; p = [12464.824043183033, 1.9615939337418535, -12464.824101263024, 0.8152816667838239, -3.3670639500886685e-8]"
+# combine_str = """
+#     A = 10^fA(x1,x2); n = abs(fn(x1,x2)); M = 10^fM(x1,x2); phi = abs(fphi(x1,x2)); chi = abs(fchi(x1,x2));
+#     z0 = A*x1^n * ((1-(phi+1)*M*x1^chi*x0)^((phi+1-n)/(phi+1))-1) / (M*x1^chi*(n-phi-1)) + f0(x0,x1,x2);
+#     z1 = 1/((phi+1)*M*x1^chi) + f1(x1,x2);
+#     z2 = A*x1^n / (M*x1^chi*(phi+1-n)) + f0(x0,x1,x2);
+#     e0 = ((y0-z0)/y0)*100;
+#     e1 = ((y1-z1)/y1)*100;
+#     e2 = ((y2-z2)/y2)*100;
+#     e0^2 + e1^2 + e2^2
+# """
+
+# # parameter_values = [6.37573E-17, 7.643720763, 2.32596E-16, 17.01786425, 5.9171705]
+# # parameter_map = dict(zip([f"p[{i+1}]" for i in range(len(parameter_values))], parameter_values))
+# # combine_str = set_parameters(combine_str, parameter_map)
+# expression_dict = julia_to_expression(julia, combine_str)
 
 # expression_dict = round_expression(expression_dict, 5)
-latex_dict = expression_to_latex(expression_dict)
-variable_map = {
-    "x0": r't',
-    "x1": r'\sigma',
-    "x2": r'T',
-    "z0": r'\varepsilon',
-    "z1": r't_{f}',
-    "z2": r'\varepsilon_{f}',
-}
-latex_dict = replace_variables(latex_dict, variable_map)
-save_latex("plot.png", [latex_dict[p] for p in ["z0", "z1", "t0", "t1", "t2", "t3", "t4"]])
-# save_latex("plot.png", [latex_dict[p] for p in ["z0", "z1", "A", "n", "M", "phi", "chi"]])
+# latex_dict = expression_to_latex(expression_dict)
+# variable_map = {
+#     "x0": r't',
+#     "x1": r'\sigma',
+#     "x2": r'T',
+#     "z0": r'\varepsilon',
+#     "z1": r't_{f}',
+#     "z2": r'\varepsilon_{f}',
+#     "z3": r'\dot{\varepsilon}_{f}',
+# }
+# latex_dict = replace_variables(latex_dict, variable_map)
+# # save_latex("plot.png", [latex_dict[p] for p in ["z0", "z1", "t0", "t1", "t2", "t3", "t4"]])
+# save_latex("plot.png", [latex_dict[p] for p in ["z0", "z1", "z2", "z3", "A", "n", "M", "phi", "chi"]])
 
-print(evaluate_expression(expression_dict, "z0", {"x0": [0.1], "x1": [80], "x2": [800]}))
+print(evaluate_expression(expression_dict, "f", {"x0": [0.1], "x1": [80], "x2": [800]}))
